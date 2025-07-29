@@ -10,13 +10,12 @@ const SpiralTimer = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [burnInOffset, setBurnInOffset] = useState(0);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
   const burnInIntervalRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const startAngleRef = useRef(0);
-  const centerRef = useRef({ x: 0, y: 0 });
   const dragStartTime = useRef(0);
   const hasDraggedRef = useRef(false);
 
@@ -108,9 +107,7 @@ const SpiralTimer = () => {
     };
   }, [resetControlsTimeout]);
 
-  // Canvas drawing
-  const drawSpiral = useCallback(() => {
-    const canvas = canvasRef.current;
+  useEffect(() => {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
@@ -118,10 +115,14 @@ const SpiralTimer = () => {
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }, [canvas])
 
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    centerRef.current = { x: centerX, y: centerY };
+  // Canvas drawing
+  const drawSpiral = useCallback(() => {
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
@@ -134,6 +135,9 @@ const SpiralTimer = () => {
 
     // Apply subtle burn-in prevention scaling
     const scale = 1 + burnInOffset;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.scale(scale, scale);
@@ -167,7 +171,7 @@ const SpiralTimer = () => {
     }
 
     ctx.restore();
-  }, [duration, remainingTime, isRunning, isPaused, burnInOffset]);
+  }, [canvas, duration, remainingTime, isRunning, isPaused, burnInOffset]);
 
   useEffect(() => {
     drawSpiral();
@@ -175,8 +179,8 @@ const SpiralTimer = () => {
 
   // Touch/mouse handling
   const getAngleFromPoint = (clientX: number, clientY: number) => {
-    if (!canvasRef.current) return 0;
-    const rect = canvasRef.current.getBoundingClientRect();
+    if (!canvas) return 0;
+    const rect = canvas.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
@@ -265,7 +269,10 @@ const SpiralTimer = () => {
   return (
     <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden">
       <canvas
-        ref={canvasRef}
+        ref={setCanvas}
+        style={{
+          width: '100%',
+        }}
         className="w-full h-full cursor-pointer"
         onClick={handleCanvasClick}
         onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
