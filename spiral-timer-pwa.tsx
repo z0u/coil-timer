@@ -9,12 +9,12 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [burnInOffset, setBurnInOffset] = useState(0);
-  
-  const canvasRef = useRef(null);
-  const intervalRef = useRef(null);
-  const controlsTimeoutRef = useRef(null);
-  const burnInIntervalRef = useRef(null);
-  const wakeLockRef = useRef(null);
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const controlsTimeoutRef = useRef<number | null>(null);
+  const burnInIntervalRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const startAngleRef = useRef(0);
   const centerRef = useRef({ x: 0, y: 0 });
   const dragStartTime = useRef(0);
@@ -43,7 +43,7 @@ const SpiralTimer = () => {
   // Initialize wake lock and burn-in prevention
   useEffect(() => {
     requestWakeLock();
-    
+
     // Subtle burn-in prevention animation (scale changes every 30 seconds)
     burnInIntervalRef.current = setInterval(() => {
       setBurnInOffset(prev => (prev + 0.003) % 0.02); // Very subtle scale variation
@@ -111,9 +111,9 @@ const SpiralTimer = () => {
   // Canvas drawing
   const drawSpiral = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
-    const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
@@ -131,7 +131,7 @@ const SpiralTimer = () => {
     const hours = timeToShow / (60 * 60 * 1000);
     const baseRadius = Math.min(rect.width, rect.height) * 0.3;
     const radiusSpacing = 25;
-    
+
     // Apply subtle burn-in prevention scaling
     const scale = 1 + burnInOffset;
     ctx.save();
@@ -144,12 +144,12 @@ const SpiralTimer = () => {
     ctx.lineCap = 'round';
 
     const totalRevolutions = Math.ceil(hours);
-    
+
     for (let rev = 0; rev < totalRevolutions; rev++) {
       const radius = baseRadius + (rev * radiusSpacing);
       const revolutionStart = rev * 60 * 60 * 1000;
       const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
-      
+
       let revolutionTime;
       if (timeToShow >= revolutionEnd) {
         revolutionTime = 60 * 60 * 1000; // Full hour
@@ -160,7 +160,7 @@ const SpiralTimer = () => {
       }
 
       const endAngle = (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
-      
+
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
       ctx.stroke();
@@ -174,11 +174,12 @@ const SpiralTimer = () => {
   }, [drawSpiral]);
 
   // Touch/mouse handling
-  const getAngleFromPoint = (clientX, clientY) => {
+  const getAngleFromPoint = (clientX: number, clientY: number) => {
+    if (!canvasRef.current) return 0;
     const rect = canvasRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     const dx = clientX - centerX;
     const dy = clientY - centerY;
     let angle = Math.atan2(dy, dx) + Math.PI / 2;
@@ -186,10 +187,10 @@ const SpiralTimer = () => {
     return angle;
   };
 
-  const handleStart = (clientX, clientY) => {
+  const handleStart = (clientX: number, clientY: number) => {
     dragStartTime.current = Date.now();
     hasDraggedRef.current = false;
-    
+
     if (!isRunning) {
       setIsDragging(true);
       setShowControls(true);
@@ -203,13 +204,13 @@ const SpiralTimer = () => {
     hasDraggedRef.current = true;
     const currentAngle = getAngleFromPoint(clientX, clientY);
     let deltaAngle = currentAngle - startAngleRef.current;
-    
+
     if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
     if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
 
     const deltaTime = (deltaAngle / (2 * Math.PI)) * 60 * 60 * 1000;
     const newDuration = Math.max(0, duration + deltaTime);
-    
+
     setDuration(newDuration);
     setRemainingTime(newDuration);
     startAngleRef.current = currentAngle;
@@ -217,9 +218,9 @@ const SpiralTimer = () => {
 
   const handleEnd = () => {
     const wasTap = !hasDraggedRef.current && (Date.now() - dragStartTime.current) < 300;
-    
+
     setIsDragging(false);
-    
+
     // Handle tap to show/hide controls
     if (wasTap) {
       setShowControls(!showControls);
@@ -254,7 +255,7 @@ const SpiralTimer = () => {
     const hours = Math.floor(ms / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((ms % (60 * 1000)) / 1000);
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
@@ -286,7 +287,7 @@ const SpiralTimer = () => {
           handleEnd();
         }}
       />
-      
+
       {showControls && (
         <div className="absolute inset-0 pointer-events-none">
           {/* Duration display while dragging or setting */}
@@ -297,7 +298,7 @@ const SpiralTimer = () => {
               </div>
             </div>
           )}
-          
+
           {/* Running time display */}
           {(isRunning || isPaused) && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
@@ -306,7 +307,7 @@ const SpiralTimer = () => {
               </div>
             </div>
           )}
-          
+
           {/* Control buttons */}
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto">
             <button
@@ -315,7 +316,7 @@ const SpiralTimer = () => {
             >
               <RotateCcw size={20} />
             </button>
-            
+
             <button
               onClick={isRunning ? pauseTimer : startTimer}
               disabled={duration === 0}
@@ -323,7 +324,7 @@ const SpiralTimer = () => {
             >
               {isRunning && !isPaused ? <Pause size={24} /> : <Play size={24} />}
             </button>
-            
+
             <button
               onClick={() => setDuration(prev => prev + 5 * 60 * 1000)}
               className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors text-xl"
