@@ -148,9 +148,6 @@ const SpiralTimer = () => {
     const centerY = rect.height / 2;
 
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.scale(scale, scale);
-    ctx.translate(-centerX, -centerY);
 
     ctx.strokeStyle = "#ef4444";
     ctx.lineCap = "round";
@@ -284,10 +281,7 @@ const SpiralTimer = () => {
     <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden">
       <canvas
         ref={setCanvas}
-        style={{
-          width: "100%",
-        }}
-        className="w-full h-full cursor-pointer"
+        className="w-full h-full cursor-pointer breathe-animation"
         onClick={handleCanvasClick}
         onMouseDown={(e) => dragStart(e.clientX, e.clientY)}
         onMouseMove={(e) => drag(e.clientX, e.clientY)}
