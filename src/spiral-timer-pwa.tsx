@@ -204,18 +204,17 @@ const SpiralTimer = () => {
     return angle;
   };
 
-  const handleStart = (clientX: number, clientY: number) => {
+  const dragStart = (clientX: number, clientY: number) => {
     dragStartTime.current = Date.now();
     hasDraggedRef.current = false;
 
     if (!isRunning) {
       setIsDragging(true);
-      setShowControls(true);
       startAngleRef.current = getAngleFromPoint(clientX, clientY);
     }
   };
 
-  const handleMove = (clientX, clientY) => {
+  const drag = (clientX: number, clientY: number) => {
     if (!isDragging || isRunning) return;
 
     hasDraggedRef.current = true;
@@ -233,20 +232,12 @@ const SpiralTimer = () => {
     startAngleRef.current = currentAngle;
   };
 
-  const handleEnd = () => {
-    const wasTap =
-      !hasDraggedRef.current && Date.now() - dragStartTime.current < 300;
-
+  const dragEnd = () => {
     setIsDragging(false);
-
-    // Handle tap to show/hide controls
-    if (wasTap) {
-      setShowControls(!showControls);
-    }
   };
 
   const handleCanvasClick = (e) => {
-    // This is now handled in handleEnd to avoid conflicts
+    setShowControls(!showControls);
   };
 
   const startTimer = () => {
@@ -291,23 +282,23 @@ const SpiralTimer = () => {
         }}
         className="w-full h-full cursor-pointer"
         onClick={handleCanvasClick}
-        onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-        onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
-        onMouseUp={handleEnd}
-        onMouseLeave={handleEnd}
+        onMouseDown={(e) => dragStart(e.clientX, e.clientY)}
+        onMouseMove={(e) => drag(e.clientX, e.clientY)}
+        onMouseUp={dragEnd}
+        onMouseLeave={dragEnd}
         onTouchStart={(e) => {
           e.preventDefault();
           const touch = e.touches[0];
-          handleStart(touch.clientX, touch.clientY);
+          dragStart(touch.clientX, touch.clientY);
         }}
         onTouchMove={(e) => {
           e.preventDefault();
           const touch = e.touches[0];
-          handleMove(touch.clientX, touch.clientY);
+          drag(touch.clientX, touch.clientY);
         }}
         onTouchEnd={(e) => {
           e.preventDefault();
-          handleEnd();
+          dragEnd();
         }}
       />
 
