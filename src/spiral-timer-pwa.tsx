@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 
 const SpiralTimer = () => {
-  const [duration, setDuration] = useState(10 * 60 * 1000); // in milliseconds
+  const [duration, setDuration] = useState(min_to_ms(10));
   const [remainingTime, setRemainingTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -19,9 +19,8 @@ const SpiralTimer = () => {
   const controlsTimeoutRef = useRef<number | null>(null);
   const burnInIntervalRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-  const startAngleRef = useRef(0);
-  const dragStartTime = useRef(0);
-  const hasDraggedRef = useRef(false);
+  const prevAngleRef = useRef(0);
+  const cumulativeDTRef = useRef(0);
 
   // Request wake lock
   const requestWakeLock = useCallback(async () => {
@@ -205,31 +204,29 @@ const SpiralTimer = () => {
   };
 
   const dragStart = (clientX: number, clientY: number) => {
-    dragStartTime.current = Date.now();
-    hasDraggedRef.current = false;
+    if (isRunning) return;
 
-    if (!isRunning) {
-      setIsDragging(true);
-      startAngleRef.current = getAngleFromPoint(clientX, clientY);
-    }
+    setIsDragging(true);
+    prevAngleRef.current = getAngleFromPoint(clientX, clientY);
+    cumulativeDTRef.current = 0;
   };
 
   const drag = (clientX: number, clientY: number) => {
     if (!isDragging || isRunning) return;
 
-    hasDraggedRef.current = true;
     const currentAngle = getAngleFromPoint(clientX, clientY);
-    let deltaAngle = currentAngle - startAngleRef.current;
+    let deltaAngle = currentAngle - prevAngleRef.current;
 
     if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
     if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
 
-    const deltaTime = (deltaAngle / (2 * Math.PI)) * 60 * 60 * 1000;
+    const deltaTime = (deltaAngle / (2 * Math.PI)) * 60 * min_to_ms(1);
     const newDuration = Math.max(0, duration + deltaTime);
 
     setDuration(newDuration);
     setRemainingTime(newDuration);
-    startAngleRef.current = currentAngle;
+    prevAngleRef.current = currentAngle;
+    cumulativeDTRef.current += Math.abs(deltaTime);
   };
 
   const dragEnd = () => {
@@ -237,6 +234,7 @@ const SpiralTimer = () => {
   };
 
   const handleCanvasClick = (e) => {
+    if (cumulativeDTRef.current > min_to_ms(1)) return;  // Dragged to change duration
     setShowControls(!showControls);
   };
 
@@ -348,7 +346,7 @@ const SpiralTimer = () => {
           </button>
 
           <button
-            onClick={() => setDuration((prev) => prev + 5 * 60 * 1000)}
+            onClick={() => setDuration((prev) => prev + min_to_ms(5))}
             className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors text-xl"
           >
             +
@@ -360,3 +358,8 @@ const SpiralTimer = () => {
 };
 
 export default SpiralTimer;
+
+const roundToMinutes = (duration: number, minutes: number = 5): number =>
+  Math.round(duration / min_to_ms(minutes)) * min_to_ms(minutes);
+
+const min_to_ms = (m: number): number => m * 60 * 1000;
