@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Pause, Play, RotateCcw } from "lucide-react";
 
 const SpiralTimer = () => {
   const [duration, setDuration] = useState(0); // in milliseconds
@@ -22,12 +22,12 @@ const SpiralTimer = () => {
   // Request wake lock
   const requestWakeLock = useCallback(async () => {
     try {
-      if ('wakeLock' in navigator) {
-        wakeLockRef.current = await navigator.wakeLock.request('screen');
-        console.log('Screen wake lock acquired');
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        console.log("Screen wake lock acquired");
       }
     } catch (err) {
-      console.error('Failed to acquire wake lock:', err);
+      console.error("Failed to acquire wake lock:", err);
     }
   }, []);
 
@@ -45,21 +45,21 @@ const SpiralTimer = () => {
 
     // Subtle burn-in prevention animation (scale changes every 30 seconds)
     burnInIntervalRef.current = setInterval(() => {
-      setBurnInOffset(prev => (prev + 0.003) % 0.02); // Very subtle scale variation
+      setBurnInOffset((prev) => (prev + 0.003) % 0.02); // Very subtle scale variation
     }, 30000);
 
     // Handle visibility change to re-acquire wake lock
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
+      if (document.visibilityState === "visible" && !wakeLockRef.current) {
         requestWakeLock();
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       releaseWakeLock();
       if (burnInIntervalRef.current) clearInterval(burnInIntervalRef.current);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [requestWakeLock, releaseWakeLock]);
 
@@ -67,7 +67,7 @@ const SpiralTimer = () => {
   useEffect(() => {
     if (isRunning && !isPaused && remainingTime > 0) {
       intervalRef.current = setInterval(() => {
-        setRemainingTime(prev => {
+        setRemainingTime((prev) => {
           if (prev <= 1000) {
             setIsRunning(false);
             setIsPaused(false);
@@ -108,18 +108,18 @@ const SpiralTimer = () => {
   }, [resetControlsTimeout]);
 
   useEffect(() => {
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  }, [canvas])
+  }, [canvas]);
 
   // Canvas drawing
   const drawSpiral = useCallback(() => {
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -143,14 +143,14 @@ const SpiralTimer = () => {
     ctx.scale(scale, scale);
     ctx.translate(-centerX, -centerY);
 
-    ctx.strokeStyle = '#ef4444';
+    ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
+    ctx.lineCap = "round";
 
     const totalRevolutions = Math.ceil(hours);
 
     for (let rev = 0; rev < totalRevolutions; rev++) {
-      const radius = baseRadius + (rev * radiusSpacing);
+      const radius = baseRadius + rev * radiusSpacing;
       const revolutionStart = rev * 60 * 60 * 1000;
       const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
 
@@ -163,7 +163,8 @@ const SpiralTimer = () => {
         continue;
       }
 
-      const endAngle = (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
+      const endAngle =
+        (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
 
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
@@ -221,7 +222,8 @@ const SpiralTimer = () => {
   };
 
   const handleEnd = () => {
-    const wasTap = !hasDraggedRef.current && (Date.now() - dragStartTime.current) < 300;
+    const wasTap =
+      !hasDraggedRef.current && Date.now() - dragStartTime.current < 300;
 
     setIsDragging(false);
 
@@ -261,9 +263,11 @@ const SpiralTimer = () => {
     const seconds = Math.floor((ms % (60 * 1000)) / 1000);
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+        .toString()
+        .padStart(2, "0")}`;
     }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -271,7 +275,7 @@ const SpiralTimer = () => {
       <canvas
         ref={setCanvas}
         style={{
-          width: '100%',
+          width: "100%",
         }}
         className="w-full h-full cursor-pointer"
         onClick={handleCanvasClick}
@@ -295,10 +299,18 @@ const SpiralTimer = () => {
         }}
       />
 
-      {showControls && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Duration display while dragging or setting */}
-          {(isDragging || (!isRunning && !isPaused && duration > 0)) && (
+      <div
+        className={`absolute inset-0 pointer-events-none transition-all duration-500 ease-in-out ${
+          showControls
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-8"
+        }`}
+        style={{ zIndex: 10 }}
+        aria-hidden={!showControls}
+      >
+        {/* Duration display while dragging or setting */}
+        {(isDragging || (!isRunning && !isPaused && duration > 0)) &&
+          showControls && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
               <div className="text-2xl font-mono text-gray-300">
                 T- {formatTime(duration)}
@@ -306,41 +318,40 @@ const SpiralTimer = () => {
             </div>
           )}
 
-          {/* Running time display */}
-          {(isRunning || isPaused) && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
-              <div className="text-2xl font-mono text-gray-300">
-                T- {formatTime(remainingTime)}
-              </div>
+        {/* Running time display */}
+        {(isRunning || isPaused) && showControls && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
+            <div className="text-2xl font-mono text-gray-300">
+              T- {formatTime(remainingTime)}
             </div>
-          )}
-
-          {/* Control buttons */}
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto">
-            <button
-              onClick={resetTimer}
-              className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors"
-            >
-              <RotateCcw size={20} />
-            </button>
-
-            <button
-              onClick={isRunning ? pauseTimer : startTimer}
-              disabled={duration === 0}
-              className="w-16 h-16 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 rounded-full flex items-center justify-center transition-colors"
-            >
-              {isRunning && !isPaused ? <Pause size={24} /> : <Play size={24} />}
-            </button>
-
-            <button
-              onClick={() => setDuration(prev => prev + 5 * 60 * 1000)}
-              className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors text-xl"
-            >
-              +
-            </button>
           </div>
+        )}
+
+        {/* Control buttons */}
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto">
+          <button
+            onClick={resetTimer}
+            className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors"
+          >
+            <RotateCcw size={20} />
+          </button>
+
+          <button
+            onClick={isRunning ? pauseTimer : startTimer}
+            disabled={duration === 0}
+            className="w-16 h-16 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 rounded-full flex items-center justify-center transition-colors"
+          >
+            {isRunning && !isPaused ? <Pause size={24} /> : <Play size={24} />}
+          </button>
+
+          <button
+            onClick={() => setDuration((prev) => prev + 5 * 60 * 1000)}
+            className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors text-xl"
+          >
+            +
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
