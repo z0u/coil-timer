@@ -153,13 +153,13 @@ const SpiralTimer = () => {
     ctx.translate(-centerX, -centerY);
 
     ctx.strokeStyle = "#ef4444";
-    ctx.lineWidth = 8;
     ctx.lineCap = "round";
 
     const totalRevolutions = Math.ceil(hours);
 
     for (let rev = 0; rev < totalRevolutions; rev++) {
-      const radius = baseRadius + rev * radiusSpacing;
+      ctx.lineWidth = 8 * (1 - (rev / 12)) ** 0.25;
+      const radius = baseRadius - rev ** 0.93 * radiusSpacing;
       const revolutionStart = rev * 60 * 60 * 1000;
       const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
 
