@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Pause, Play, RotateCcw } from 'lucide-react';
 
 const SpiralTimer = () => {
   const [duration, setDuration] = useState(min_to_ms(10));
@@ -27,12 +27,12 @@ const SpiralTimer = () => {
   // Request wake lock
   const requestWakeLock = useCallback(async () => {
     try {
-      if ("wakeLock" in navigator) {
-        wakeLockRef.current = await navigator.wakeLock.request("screen");
-        console.log("Screen wake lock acquired");
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Screen wake lock acquired');
       }
     } catch (err) {
-      console.error("Failed to acquire wake lock:", err);
+      console.error('Failed to acquire wake lock:', err);
     }
   }, []);
 
@@ -55,16 +55,16 @@ const SpiralTimer = () => {
 
     // Handle visibility change to re-acquire wake lock
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && !wakeLockRef.current) {
+      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
         requestWakeLock();
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       releaseWakeLock();
       if (burnInIntervalRef.current) clearInterval(burnInIntervalRef.current);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [requestWakeLock, releaseWakeLock]);
 
@@ -113,15 +113,14 @@ const SpiralTimer = () => {
   }, [resetControlsTimeout]);
 
   useEffect(() => {
-    const handleResize = () =>
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Canvas drawing
   const drawSpiral = useCallback(() => {
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -131,11 +130,7 @@ const SpiralTimer = () => {
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    const timeToShow = isDragging
-      ? roundedDuration
-      : isRunning || isPaused
-      ? remainingTime
-      : roundedDuration;
+    const timeToShow = isDragging ? roundedDuration : isRunning || isPaused ? remainingTime : roundedDuration;
     if (timeToShow <= 0) return;
 
     const hours = timeToShow / (60 * 60 * 1000);
@@ -149,13 +144,13 @@ const SpiralTimer = () => {
 
     ctx.save();
 
-    ctx.strokeStyle = "#ef4444";
-    ctx.lineCap = "round";
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineCap = 'round';
 
     const totalRevolutions = Math.ceil(hours);
 
     for (let rev = 0; rev < totalRevolutions; rev++) {
-      ctx.lineWidth = 8 * (1 - (rev / 12)) ** 0.25;
+      ctx.lineWidth = 8 * (1 - rev / 12) ** 0.25;
       const radius = baseRadius - rev ** 0.93 * radiusSpacing;
       const revolutionStart = rev * 60 * 60 * 1000;
       const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
@@ -169,8 +164,7 @@ const SpiralTimer = () => {
         continue;
       }
 
-      const endAngle =
-        (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
+      const endAngle = (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
 
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
@@ -178,16 +172,7 @@ const SpiralTimer = () => {
     }
 
     ctx.restore();
-  }, [
-    canvas,
-    windowSize,
-    duration,
-    roundedDuration,
-    remainingTime,
-    isRunning,
-    isPaused,
-    burnInOffset,
-  ]);
+  }, [canvas, windowSize, duration, roundedDuration, remainingTime, isRunning, isPaused, burnInOffset]);
 
   useEffect(() => {
     drawSpiral();
@@ -270,11 +255,9 @@ const SpiralTimer = () => {
     const seconds = Math.floor((ms % (60 * 1000)) / 1000);
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
-        .toString()
-        .padStart(2, "0")}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -305,28 +288,21 @@ const SpiralTimer = () => {
 
       <div
         className={`absolute inset-0 pointer-events-none transition-all duration-500 ease-in-out ${
-          showControls
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-8"
+          showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8'
         }`}
         style={{ zIndex: 10 }}
       >
         {/* Duration display while dragging or setting */}
-        {(isDragging || (!isRunning && !isPaused && roundedDuration > 0)) &&
-          showControls && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
-              <div className="text-2xl font-mono text-gray-300">
-                {formatTime(roundedDuration)}
-              </div>
-            </div>
-          )}
+        {(isDragging || (!isRunning && !isPaused && roundedDuration > 0)) && showControls && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
+            <div className="text-2xl font-mono text-gray-300">{formatTime(roundedDuration)}</div>
+          </div>
+        )}
 
         {/* Running time display */}
         {(isRunning || isPaused) && showControls && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
-            <div className="text-2xl font-mono text-gray-300">
-              {formatTime(remainingTime)}
-            </div>
+            <div className="text-2xl font-mono text-gray-300">{formatTime(remainingTime)}</div>
           </div>
         )}
 
