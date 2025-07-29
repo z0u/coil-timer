@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 
 const SpiralTimer = () => {
-  const [duration, setDuration] = useState(0); // in milliseconds
+  const [duration, setDuration] = useState(10 * 60 * 1000); // in milliseconds
   const [remainingTime, setRemainingTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -11,6 +11,10 @@ const SpiralTimer = () => {
   const [burnInOffset, setBurnInOffset] = useState(0);
 
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
   const intervalRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
   const burnInIntervalRef = useRef<number | null>(null);
@@ -108,14 +112,11 @@ const SpiralTimer = () => {
   }, [resetControlsTimeout]);
 
   useEffect(() => {
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  }, [canvas]);
+    const handleResize = () =>
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Canvas drawing
   const drawSpiral = useCallback(() => {
@@ -123,6 +124,9 @@ const SpiralTimer = () => {
     if (!canvas || !ctx) return;
 
     const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
@@ -172,7 +176,15 @@ const SpiralTimer = () => {
     }
 
     ctx.restore();
-  }, [canvas, duration, remainingTime, isRunning, isPaused, burnInOffset]);
+  }, [
+    canvas,
+    windowSize,
+    duration,
+    remainingTime,
+    isRunning,
+    isPaused,
+    burnInOffset,
+  ]);
 
   useEffect(() => {
     drawSpiral();
