@@ -22,6 +22,8 @@ const SpiralTimer = () => {
   const prevAngleRef = useRef(0);
   const cumulativeDTRef = useRef(0);
 
+  const roundedDuration = ceilMinutes(duration);
+
   // Request wake lock
   const requestWakeLock = useCallback(async () => {
     try {
@@ -129,7 +131,11 @@ const SpiralTimer = () => {
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    const timeToShow = isRunning || isPaused ? remainingTime : duration;
+    const timeToShow = isDragging
+      ? roundedDuration
+      : isRunning || isPaused
+      ? remainingTime
+      : roundedDuration;
     if (timeToShow <= 0) return;
 
     const hours = timeToShow / (60 * 60 * 1000);
@@ -179,6 +185,7 @@ const SpiralTimer = () => {
     canvas,
     windowSize,
     duration,
+    roundedDuration,
     remainingTime,
     isRunning,
     isPaused,
@@ -224,7 +231,6 @@ const SpiralTimer = () => {
     const newDuration = Math.max(0, duration + deltaTime);
 
     setDuration(newDuration);
-    setRemainingTime(newDuration);
     prevAngleRef.current = currentAngle;
     cumulativeDTRef.current += Math.abs(deltaTime);
   };
@@ -233,17 +239,20 @@ const SpiralTimer = () => {
     setIsDragging(false);
   };
 
-  const handleCanvasClick = (e) => {
-    if (cumulativeDTRef.current > min_to_ms(1)) return;  // Dragged to change duration
+  const handleCanvasClick = () => {
+    if (cumulativeDTRef.current > min_to_ms(1)) {
+      setRemainingTime(roundedDuration);
+      return; // Dragged to change duration
+    }
     setShowControls(!showControls);
   };
 
   const startTimer = () => {
-    if (duration > 0) {
+    if (roundedDuration > 0) {
       setIsRunning(true);
       setIsPaused(false);
       if (remainingTime === 0) {
-        setRemainingTime(duration);
+        setRemainingTime(roundedDuration);
       }
     }
   };
@@ -255,7 +264,7 @@ const SpiralTimer = () => {
   const resetTimer = () => {
     setIsRunning(false);
     setIsPaused(false);
-    setRemainingTime(duration);
+    setRemainingTime(roundedDuration);
   };
 
   const formatTime = (ms) => {
@@ -307,14 +316,13 @@ const SpiralTimer = () => {
             : "opacity-0 -translate-y-8"
         }`}
         style={{ zIndex: 10 }}
-        aria-hidden={!showControls}
       >
         {/* Duration display while dragging or setting */}
-        {(isDragging || (!isRunning && !isPaused && duration > 0)) &&
+        {(isDragging || (!isRunning && !isPaused && roundedDuration > 0)) &&
           showControls && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
               <div className="text-2xl font-mono text-gray-300">
-                T- {formatTime(duration)}
+                {formatTime(roundedDuration)}
               </div>
             </div>
           )}
@@ -323,13 +331,13 @@ const SpiralTimer = () => {
         {(isRunning || isPaused) && showControls && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
             <div className="text-2xl font-mono text-gray-300">
-              T- {formatTime(remainingTime)}
+              {formatTime(remainingTime)}
             </div>
           </div>
         )}
 
         {/* Control buttons */}
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto">
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto flex items-center justify-center ">
           <button
             onClick={resetTimer}
             className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors"
@@ -359,7 +367,10 @@ const SpiralTimer = () => {
 
 export default SpiralTimer;
 
-const roundToMinutes = (duration: number, minutes: number = 5): number =>
+const ceilMinutes = (duration: number, minutes: number = 1): number =>
+  Math.ceil(duration / min_to_ms(minutes)) * min_to_ms(minutes);
+
+const roundToMinutes = (duration: number, minutes: number = 1): number =>
   Math.round(duration / min_to_ms(minutes)) * min_to_ms(minutes);
 
 const min_to_ms = (m: number): number => m * 60 * 1000;
