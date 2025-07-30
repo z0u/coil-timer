@@ -1,6 +1,7 @@
 import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWakeLock } from './use-wake-lock';
+import { useWindowSize } from './use-window-size';
 
 // State definitions
 interface Running {
@@ -45,11 +46,8 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
-  const [windowSize, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
 
+  const windowSize = useWindowSize();
   useWakeLock({ enable: timerState.is === 'running' });
 
   const animationFrameRef = useRef<number>(0);
@@ -71,13 +69,6 @@ const SpiralTimer = () => {
       }
     };
   }, [timerState.is]);
-
-  // Track window size for responsive redraws
-  useEffect(() => {
-    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Canvas drawing logic
   const drawSpiral = useCallback(
