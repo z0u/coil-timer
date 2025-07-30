@@ -33,6 +33,7 @@ const min_to_ms = (m: number): number => sec_to_ms(m * 60);
 const TAP_DRAG_TOLERANCE = 12; // px
 const OVERLAY_TIMEOUT = sec_to_ms(5); // ms
 const RUNNING_FPS = 1;
+const MAX_FPS = 30;
 
 const SpiralTimer = () => {
   const [timerState, setTimerState] = useState<TimerState>({
@@ -92,16 +93,55 @@ const SpiralTimer = () => {
       const totalRevolutions = Math.max(1, Math.ceil(hours));
       const tracks = getTracks(totalRevolutions, baseRadius, radiusSpacing, timeToDraw);
 
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      const finalTrack = tracks[tracks.length - 1];
+      if (!finalTrack) return;
+
+      // Draw clock ticks
+      if (tracks.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#a1a1aa'; // zinc-400
+        ctx.lineCap = 'round';
+        const tickOuterRadius = tracks[0].radius + 40;
+        const majorTickLength = 20;
+        const minorTickLength = 10;
+
+        for (let i = 0; i < 12; i++) {
+          const angle = i * (Math.PI / 6) - Math.PI / 2; // Start from top
+          const isMajor = i % 3 === 0;
+          const tickLength = isMajor ? majorTickLength : minorTickLength;
+          const startRadius = tickOuterRadius - tickLength;
+
+          const startX = centerX + startRadius * Math.cos(angle);
+          const startY = centerY + startRadius * Math.sin(angle);
+          const endX = centerX + tickOuterRadius * Math.cos(angle);
+          const endY = centerY + tickOuterRadius * Math.sin(angle);
+
+          let angleDiff = Math.abs(finalTrack.endAngle - angle);
+          if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+          const degreesDiff = (angleDiff * 180) / Math.PI;
+          const proximity = Math.max(0, 0.5 * (1 - degreesDiff / 30));
+
+          ctx.globalAlpha = proximity;
+          ctx.lineWidth = isMajor ? 8 : 6;
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.strokeStyle = '#ef4444';
       ctx.lineCap = 'round';
 
-      const centerX = width / 2;
-      const centerY = height / 2;
-
       // Draw faint tracks as complete circles
       ctx.globalAlpha = 0.2;
-      for (const { thickness, radius } of tracks.slice(-1)) {
+      {
+        const { thickness, radius } = finalTrack;
         ctx.lineWidth = 4 * thickness;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -144,14 +184,14 @@ const SpiralTimer = () => {
       }
 
       // Throttle condition: running, but not interacting or in the grace period.
-      if (timerState.is === 'running' && !highFrameRateOverride) {
-        const frameInterval = 1000 / RUNNING_FPS;
-        if (t - lastFrameTime < frameInterval) {
-          animationFrameRef.current = requestAnimationFrame(animate);
-          return; // Skip this frame.
-        }
-        lastFrameTime = t;
+      const fps = timerState.is === 'interacting' || highFrameRateOverride ? MAX_FPS : RUNNING_FPS;
+
+      const frameInterval = 1000 / fps;
+      if (t - lastFrameTime < frameInterval) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return; // Skip this frame.
       }
+      lastFrameTime = t;
 
       if (debugEl) debugEl.textContent = `${t.toFixed(2)}`;
 
