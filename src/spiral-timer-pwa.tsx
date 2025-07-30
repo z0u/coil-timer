@@ -46,6 +46,7 @@ const SpiralTimer = () => {
 
   const animationFrameRef = useRef<number>(0);
   const interactionRef = useRef<Interaction | null>(null);
+  const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -159,25 +160,27 @@ const SpiralTimer = () => {
 
   // Main animation loop
   useEffect(() => {
-    // If paused, we stop the animation loop completely.
-    if (timerState.is === 'paused') {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = 0;
-      }
-      // Perform a final draw for the paused state.
-      drawSpiral(timerState.remainingTime);
-      if (timeEl) {
-        timeEl.textContent = formatTime(timerState.remainingTime);
-      }
-      if (debugEl) debugEl.textContent = 'paused';
-      return; // Stop the effect here.
-    }
-
     let lastFrameTime = 0;
     const animate = (t: number) => {
-      // When running, we want to limit the frame rate.
-      if (timerState.is === 'running') {
+      const now = Date.now();
+      const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
+      const highFrameRateOverride = timeSinceLastInteraction < 5000;
+
+      // Stop condition: paused and the 5s grace period is over.
+      if (timerState.is === 'paused' && !highFrameRateOverride) {
+        // Ensure we only perform the final draw once and then stop.
+        if (animationFrameRef.current) {
+          drawSpiral(timerState.remainingTime);
+          if (timeEl) timeEl.textContent = formatTime(timerState.remainingTime);
+          if (debugEl) debugEl.textContent = 'paused';
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = 0;
+        }
+        return;
+      }
+
+      // Throttle condition: running, but not interacting or in the grace period.
+      if (timerState.is === 'running' && !highFrameRateOverride) {
         const frameInterval = 1000 / RUNNING_FPS;
         if (t - lastFrameTime < frameInterval) {
           animationFrameRef.current = requestAnimationFrame(animate);
@@ -191,17 +194,17 @@ const SpiralTimer = () => {
       let newDisplayTime: number;
 
       if (timerState.is === 'interacting') {
-        // High-frequency updates during interaction
         newDisplayTime = interactionRef.current!.remainingTime;
-      } else {
+      } else if (timerState.is === 'running') {
         const remaining = timerState.endTime - Date.now();
         if (remaining <= 0) {
           setTimerState({ is: 'paused', remainingTime: 0 });
-          // The state change will re-run the effect, which will then stop the loop.
-          return;
-        } else {
-          newDisplayTime = remaining;
+          return; // State change will re-run the effect.
         }
+        newDisplayTime = remaining;
+      } else {
+        // Paused, but still in the high-frame-rate grace period.
+        newDisplayTime = timerState.remainingTime;
       }
 
       drawSpiral(newDisplayTime);
@@ -215,8 +218,7 @@ const SpiralTimer = () => {
     // Start the animation loop.
     animationFrameRef.current = requestAnimationFrame(animate);
 
-    // Cleanup function to cancel the animation frame when the component unmounts
-    // or when the dependencies of the effect change.
+    // Cleanup function.
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -280,6 +282,7 @@ const SpiralTimer = () => {
   const pointerUp = () => {
     if (timerState.is !== 'interacting') return;
     const interaction = interactionRef.current!;
+    lastInteractionTimeRef.current = Date.now();
 
     let nextState: 'running' | 'paused';
     let newRemainingTime: number;
