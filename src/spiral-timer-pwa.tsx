@@ -32,6 +32,15 @@ interface Interaction {
 const sec_to_ms = (s: number): number => s * 1000;
 const min_to_ms = (m: number): number => sec_to_ms(m * 60);
 
+const CLOCK_DIAMETER = 0.8; // min(vh, vw)
+const TRACK_SPACING = 0.035; // min(vh, vw)
+const TRACK_WIDTH = 0.015; // min(vh, vw)
+const TICK_OUTER_DIA = 0.9;
+const MAJOR_TICK_LENGTH = 0.014;
+const MAJOR_TICK_WIDTH = 0.012;
+const MINOR_TICK_LENGTH = 0.008;
+const MINOR_TICK_WIDTH = 0.008;
+
 const TAP_DRAG_TOLERANCE = 12; // px
 const OVERLAY_TIMEOUT = sec_to_ms(5); // ms
 const RUNNING_FPS = 1;
@@ -90,10 +99,11 @@ const SpiralTimer = () => {
       ctx.clearRect(0, 0, width, height);
 
       const hours = timeToDraw / (60 * 60 * 1000);
-      const baseRadius = Math.min(width, height) * 0.3;
-      const radiusSpacing = 25;
+      const screenDiameter = Math.min(width, height);
+      const baseRadius = (screenDiameter * CLOCK_DIAMETER) / 2;
+      const trackSpacing = screenDiameter * TRACK_SPACING;
       const totalRevolutions = Math.max(1, Math.ceil(hours));
-      const tracks = getTracks(totalRevolutions, baseRadius, radiusSpacing, timeToDraw);
+      const tracks = getTracks(totalRevolutions, baseRadius, trackSpacing, timeToDraw);
 
       const centerX = width / 2;
       const centerY = height / 2;
@@ -106,9 +116,11 @@ const SpiralTimer = () => {
         ctx.save();
         ctx.strokeStyle = '#a1a1aa'; // zinc-400
         ctx.lineCap = 'round';
-        const tickOuterRadius = tracks[0].radius + 40;
-        const majorTickLength = 20;
-        const minorTickLength = 10;
+        const tickOuterRadius = TICK_OUTER_DIA * screenDiameter / 2;
+        const majorTickLength = MAJOR_TICK_LENGTH * screenDiameter;
+        const majorTickWidth = MAJOR_TICK_WIDTH * screenDiameter;
+        const minorTickLength = MINOR_TICK_LENGTH * screenDiameter;
+        const minorTickWidth = MINOR_TICK_WIDTH * screenDiameter;
 
         for (let i = 0; i < 12; i++) {
           const angle = i * (Math.PI / 6) - Math.PI / 2; // Start from top
@@ -127,7 +139,7 @@ const SpiralTimer = () => {
           const proximity = Math.max(0, 0.5 * (1 - degreesDiff / 30));
 
           ctx.globalAlpha = proximity;
-          ctx.lineWidth = isMajor ? 8 : 6;
+          ctx.lineWidth = isMajor ? majorTickWidth : minorTickWidth;
           ctx.beginPath();
           ctx.moveTo(startX, startY);
           ctx.lineTo(endX, endY);
@@ -144,7 +156,7 @@ const SpiralTimer = () => {
       ctx.globalAlpha = 0.2;
       {
         const { thickness, radius } = finalTrack;
-        ctx.lineWidth = 4 * thickness;
+        ctx.lineWidth = TRACK_WIDTH * screenDiameter * thickness / 2;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.stroke();
@@ -153,7 +165,7 @@ const SpiralTimer = () => {
       // Draw revolutions
       ctx.globalAlpha = 1.0;
       for (const { thickness, radius, endAngle } of tracks) {
-        ctx.lineWidth = 8 * thickness;
+        ctx.lineWidth = TRACK_WIDTH * screenDiameter * thickness;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
         ctx.stroke();
