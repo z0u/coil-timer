@@ -334,7 +334,7 @@ const SpiralTimer = () => {
   };
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden">
+    <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden breathe-animation">
       <canvas
         ref={setCanvas}
         className="w-full h-full cursor-pointer"
