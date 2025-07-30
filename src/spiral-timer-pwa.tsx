@@ -2,6 +2,7 @@ import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWakeLock } from './use-wake-lock';
 import { useWindowSize } from './use-window-size';
+import clsx from 'clsx';
 
 // State definitions
 interface Running {
@@ -64,6 +65,9 @@ const SpiralTimer = () => {
   const interactionRef = useRef<Interaction | null>(null);
   const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
+
+  const diameter = Math.min(windowSize.width, windowSize.height) * CLOCK_DIAMETER;
+  const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
   // Show/hide controls based on timer state
   useEffect(() => {
@@ -347,10 +351,23 @@ const SpiralTimer = () => {
   };
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden">
-      <canvas
-        ref={setCanvas}
-        className="w-full h-full cursor-pointer breathe-animation"
+    <div
+      className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
+      style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
+    >
+      <canvas ref={setCanvas} className={clsx("w-full h-full', 'cursor-pointer breathe-animation")} />
+
+      <button
+        aria-label={
+          isOrWas === 'paused'
+            ? 'Timer control: tap to start, drag to adjust time'
+            : 'Timer control: tap to pause, drag to adjust time'
+        }
+        className={clsx(
+          'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
+          'block w-(--clock-diameter) h-(--clock-diameter) rounded-full',
+          // 'border-2 border-solid',
+        )}
         onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
         onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
         onMouseUp={pointerUp}
@@ -367,7 +384,7 @@ const SpiralTimer = () => {
           e.preventDefault();
           pointerUp();
         }}
-      />
+      ></button>
 
       <div
         className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ease-in-out z-10 ${
@@ -376,19 +393,21 @@ const SpiralTimer = () => {
       >
         <div className="absolute top-6 right-6 pointer-events-auto">
           <button
+            aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title="Fullscreen"
             className="cursor-pointer text-gray-400"
             onClick={(e) => {
               e.stopPropagation();
               toggleFullscreen();
             }}
           >
-            <Scan size={24} /> <span className="sr-only">Toggle fullscreen</span>
+            <Scan size={24} />
           </button>
         </div>
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center gap-4">
-          { timerState.is === 'paused' && <Pause size="1em" className="fill-gray-500 stroke-none" /> }
-          { timerState.is !== 'paused' && <Play size="1em" className="fill-gray-500 stroke-none" /> }
+          {isOrWas === 'paused' && <Pause size="1em" className="fill-gray-500 stroke-none" />}
+          {isOrWas !== 'paused' && <Play size="1em" className="fill-gray-500 stroke-none" />}
           <span ref={setTimeEl} className="font-mono" />
         </div>
       </div>
