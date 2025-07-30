@@ -35,6 +35,7 @@ const min_to_ms = (m: number): number => sec_to_ms(m * 60);
 const CLOCK_DIAMETER = 0.8; // min(vh, vw)
 const TRACK_SPACING = 0.035; // min(vh, vw)
 const TRACK_WIDTH = 0.015; // min(vh, vw)
+
 const TICK_OUTER_DIA = 0.9;
 const MAJOR_TICK_LENGTH = 0.014;
 const MAJOR_TICK_WIDTH = 0.012;
@@ -136,7 +137,7 @@ const SpiralTimer = () => {
           let angleDiff = Math.abs(finalTrack.endAngle - angle);
           if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
           const degreesDiff = (angleDiff * 180) / Math.PI;
-          const proximity = Math.max(0, 0.5 * (1 - degreesDiff / 30));
+          const proximity = Math.max(0, 0.5 * (1 - degreesDiff / 35));
 
           ctx.globalAlpha = proximity;
           ctx.lineWidth = isMajor ? majorTickWidth : minorTickWidth;
@@ -346,10 +347,10 @@ const SpiralTimer = () => {
   };
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden breathe-animation">
+    <div className="h-screen bg-black text-white flex flex-col items-center justify-center overflow-hidden">
       <canvas
         ref={setCanvas}
-        className="w-full h-full cursor-pointer"
+        className="w-full h-full cursor-pointer breathe-animation"
         onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
         onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
         onMouseUp={pointerUp}
@@ -386,7 +387,7 @@ const SpiralTimer = () => {
         </div>
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div ref={setTimeEl} className="text-[calc(min(2.5vh,2.5vw))] font-mono text-gray-300" />
+          <div ref={setTimeEl} className="text-[calc(min(5vh,5vw))] font-mono text-gray-300" />
         </div>
 
         <div
@@ -419,7 +420,7 @@ type Track = {
 const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
   const tracks: Track[] = [];
   for (let rev = 0; rev < totalRevolutions; rev++) {
-    const thickness = (1 - rev / 12) ** 0.25;
+    const thickness = (1 - rev / 12) ** 0.8;
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
