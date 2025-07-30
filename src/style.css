@@ -12,8 +12,379 @@
   }
 }
 
+@keyframes breathe-unrolled {
+  0% {
+    transform: scale(1);
+  }
+  0.833% {
+    transform: scale(1.000833);
+  }
+  1.667% {
+    transform: scale(1.001667);
+  }
+  2.5% {
+    transform: scale(1.0025);
+  }
+  3.333% {
+    transform: scale(1.003333);
+  }
+  4.167% {
+    transform: scale(1.004167);
+  }
+  5% {
+    transform: scale(1.005);
+  }
+  5.833% {
+    transform: scale(1.005833);
+  }
+  6.667% {
+    transform: scale(1.006667);
+  }
+  7.5% {
+    transform: scale(1.0075);
+  }
+  8.333% {
+    transform: scale(1.008333);
+  }
+  9.167% {
+    transform: scale(1.009167);
+  }
+  10% {
+    transform: scale(1.01);
+  }
+  10.833% {
+    transform: scale(1.010833);
+  }
+  11.667% {
+    transform: scale(1.011667);
+  }
+  12.5% {
+    transform: scale(1.0125);
+  }
+  13.333% {
+    transform: scale(1.013333);
+  }
+  14.167% {
+    transform: scale(1.014167);
+  }
+  15% {
+    transform: scale(1.015);
+  }
+  15.833% {
+    transform: scale(1.015833);
+  }
+  16.667% {
+    transform: scale(1.016667);
+  }
+  17.5% {
+    transform: scale(1.0175);
+  }
+  18.333% {
+    transform: scale(1.018333);
+  }
+  19.167% {
+    transform: scale(1.019167);
+  }
+  20% {
+    transform: scale(1.02);
+  }
+  20.833% {
+    transform: scale(1.020833);
+  }
+  21.667% {
+    transform: scale(1.021667);
+  }
+  22.5% {
+    transform: scale(1.0225);
+  }
+  23.333% {
+    transform: scale(1.023333);
+  }
+  24.167% {
+    transform: scale(1.024167);
+  }
+  25% {
+    transform: scale(1.025);
+  }
+  25.833% {
+    transform: scale(1.025833);
+  }
+  26.667% {
+    transform: scale(1.026667);
+  }
+  27.5% {
+    transform: scale(1.0275);
+  }
+  28.333% {
+    transform: scale(1.028333);
+  }
+  29.167% {
+    transform: scale(1.029167);
+  }
+  30% {
+    transform: scale(1.03);
+  }
+  30.833% {
+    transform: scale(1.030833);
+  }
+  31.667% {
+    transform: scale(1.031667);
+  }
+  32.5% {
+    transform: scale(1.0325);
+  }
+  33.333% {
+    transform: scale(1.033333);
+  }
+  34.167% {
+    transform: scale(1.034167);
+  }
+  35% {
+    transform: scale(1.035);
+  }
+  35.833% {
+    transform: scale(1.035833);
+  }
+  36.667% {
+    transform: scale(1.036667);
+  }
+  37.5% {
+    transform: scale(1.0375);
+  }
+  38.333% {
+    transform: scale(1.038333);
+  }
+  39.167% {
+    transform: scale(1.039167);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  40.833% {
+    transform: scale(1.040833);
+  }
+  41.667% {
+    transform: scale(1.041667);
+  }
+  42.5% {
+    transform: scale(1.0425);
+  }
+  43.333% {
+    transform: scale(1.043333);
+  }
+  44.167% {
+    transform: scale(1.044167);
+  }
+  45% {
+    transform: scale(1.045);
+  }
+  45.833% {
+    transform: scale(1.045833);
+  }
+  46.667% {
+    transform: scale(1.046667);
+  }
+  47.5% {
+    transform: scale(1.0475);
+  }
+  48.333% {
+    transform: scale(1.048333);
+  }
+  49.167% {
+    transform: scale(1.049167);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  50.833% {
+    transform: scale(1.049167);
+  }
+  51.667% {
+    transform: scale(1.048333);
+  }
+  52.5% {
+    transform: scale(1.0475);
+  }
+  53.333% {
+    transform: scale(1.046667);
+  }
+  54.167% {
+    transform: scale(1.045833);
+  }
+  55% {
+    transform: scale(1.045);
+  }
+  55.833% {
+    transform: scale(1.044167);
+  }
+  56.667% {
+    transform: scale(1.043333);
+  }
+  57.5% {
+    transform: scale(1.0425);
+  }
+  58.333% {
+    transform: scale(1.041667);
+  }
+  59.167% {
+    transform: scale(1.040833);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  60.833% {
+    transform: scale(1.039167);
+  }
+  61.667% {
+    transform: scale(1.038333);
+  }
+  62.5% {
+    transform: scale(1.0375);
+  }
+  63.333% {
+    transform: scale(1.036667);
+  }
+  64.167% {
+    transform: scale(1.035833);
+  }
+  65% {
+    transform: scale(1.035);
+  }
+  65.833% {
+    transform: scale(1.034167);
+  }
+  66.667% {
+    transform: scale(1.033333);
+  }
+  67.5% {
+    transform: scale(1.0325);
+  }
+  68.333% {
+    transform: scale(1.031667);
+  }
+  69.167% {
+    transform: scale(1.030833);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  70.833% {
+    transform: scale(1.029167);
+  }
+  71.667% {
+    transform: scale(1.028333);
+  }
+  72.5% {
+    transform: scale(1.0275);
+  }
+  73.333% {
+    transform: scale(1.026667);
+  }
+  74.167% {
+    transform: scale(1.025833);
+  }
+  75% {
+    transform: scale(1.025);
+  }
+  75.833% {
+    transform: scale(1.024167);
+  }
+  76.667% {
+    transform: scale(1.023333);
+  }
+  77.5% {
+    transform: scale(1.0225);
+  }
+  78.333% {
+    transform: scale(1.021667);
+  }
+  79.167% {
+    transform: scale(1.020833);
+  }
+  80% {
+    transform: scale(1.02);
+  }
+  80.833% {
+    transform: scale(1.019167);
+  }
+  81.667% {
+    transform: scale(1.018333);
+  }
+  82.5% {
+    transform: scale(1.0175);
+  }
+  83.333% {
+    transform: scale(1.016667);
+  }
+  84.167% {
+    transform: scale(1.015833);
+  }
+  85% {
+    transform: scale(1.015);
+  }
+  85.833% {
+    transform: scale(1.014167);
+  }
+  86.667% {
+    transform: scale(1.013333);
+  }
+  87.5% {
+    transform: scale(1.0125);
+  }
+  88.333% {
+    transform: scale(1.011667);
+  }
+  89.167% {
+    transform: scale(1.010833);
+  }
+  90% {
+    transform: scale(1.01);
+  }
+  90.833% {
+    transform: scale(1.009167);
+  }
+  91.667% {
+    transform: scale(1.008333);
+  }
+  92.5% {
+    transform: scale(1.0075);
+  }
+  93.333% {
+    transform: scale(1.006667);
+  }
+  94.167% {
+    transform: scale(1.005833);
+  }
+  95% {
+    transform: scale(1.005);
+  }
+  95.833% {
+    transform: scale(1.004167);
+  }
+  96.667% {
+    transform: scale(1.003333);
+  }
+  97.5% {
+    transform: scale(1.0025);
+  }
+  98.333% {
+    transform: scale(1.001667);
+  }
+  99.167% {
+    transform: scale(1.000833);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .breathe-animation {
-  animation: breathe 120s ease-in-out infinite;
+  /* Prevent burn-in by slowly scaling. This happens so slowly that users are
+     unlikely to notice. */
+  /* animation: breathe 120s ease infinite; */
+
+  /* Unrolled version uses less GPU (~80% less, 6% -> 1%) */
+  animation: breathe-unrolled 120s step-end infinite;
 }
 
 /* Prevent pull-to-refresh/reload gesture on mobile browsers */
