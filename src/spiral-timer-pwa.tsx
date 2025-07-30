@@ -116,7 +116,7 @@ const SpiralTimer = () => {
         ctx.save();
         ctx.strokeStyle = '#a1a1aa'; // zinc-400
         ctx.lineCap = 'round';
-        const tickOuterRadius = TICK_OUTER_DIA * screenDiameter / 2;
+        const tickOuterRadius = (TICK_OUTER_DIA * screenDiameter) / 2;
         const majorTickLength = MAJOR_TICK_LENGTH * screenDiameter;
         const majorTickWidth = MAJOR_TICK_WIDTH * screenDiameter;
         const minorTickLength = MINOR_TICK_LENGTH * screenDiameter;
@@ -156,7 +156,7 @@ const SpiralTimer = () => {
       ctx.globalAlpha = 0.2;
       {
         const { thickness, radius } = finalTrack;
-        ctx.lineWidth = TRACK_WIDTH * screenDiameter * thickness / 2;
+        ctx.lineWidth = (TRACK_WIDTH * screenDiameter * thickness) / 2;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.stroke();
