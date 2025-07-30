@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useWakeLock } from './use-wake-lock';
 
 // State definitions
 interface Running {
@@ -44,44 +45,12 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [debugEl, setDebugEl] = useState<HTMLElement | null>(null);
 
+  useWakeLock({enable: timerState.is === 'running'});
+
   const animationFrameRef = useRef<number>(0);
   const interactionRef = useRef<Interaction | null>(null);
   const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-
-  // Request wake lock
-  const requestWakeLock = useCallback(async () => {
-    if (!('wakeLock' in navigator)) return;
-    try {
-      wakeLockRef.current = await navigator.wakeLock.request('screen');
-      console.log('Screen wake lock acquired');
-    } catch (err) {
-      console.error('Failed to acquire wake lock:', err);
-    }
-  }, []);
-
-  // Release wake lock
-  const releaseWakeLock = useCallback(() => {
-    wakeLockRef.current?.release();
-    wakeLockRef.current = null;
-  }, []);
-
-  // Initialize wake lock and handle visibility changes
-  useEffect(() => {
-    requestWakeLock();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
-        requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      releaseWakeLock();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [requestWakeLock, releaseWakeLock]);
 
   // Show/hide controls based on timer state
   useEffect(() => {
