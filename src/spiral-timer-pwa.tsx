@@ -128,27 +128,36 @@ const SpiralTimer = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Canvas resizing
+  useEffect(() => {
+    if (!canvas) return;
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    canvas.width = width * window.devicePixelRatio;
+    canvas.height = height * window.devicePixelRatio;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }, [canvas, windowSize]);
+
   // Canvas drawing
   const drawSpiral = useCallback(() => {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-    ctx.clearRect(0, 0, rect.width, rect.height);
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    ctx.clearRect(0, 0, width, height);
 
     const timeToShow = displayTime;
 
     const hours = timeToShow / (60 * 60 * 1000);
-    const baseRadius = Math.min(rect.width, rect.height) * 0.3;
+    const baseRadius = Math.min(width, height) * 0.3;
     const radiusSpacing = 25;
 
     // Apply subtle burn-in prevention scaling
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    const centerX = width / 2;
+    const centerY = height / 2;
 
     ctx.save();
 
@@ -180,7 +189,7 @@ const SpiralTimer = () => {
     }
 
     ctx.restore();
-  }, [canvas, windowSize, displayTime]);
+  }, [canvas, displayTime, windowSize]);
 
   useEffect(() => {
     drawSpiral();
