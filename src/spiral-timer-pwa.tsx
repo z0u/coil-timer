@@ -45,6 +45,10 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
   useWakeLock({ enable: timerState.is === 'running' });
 
@@ -67,6 +71,13 @@ const SpiralTimer = () => {
       }
     };
   }, [timerState.is]);
+
+  // Track window size for responsive redraws
+  useEffect(() => {
+    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Canvas drawing logic
   const drawSpiral = useCallback(
@@ -226,7 +237,7 @@ const SpiralTimer = () => {
         animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, timerState, drawSpiral]);
+  }, [timeEl, timerState, drawSpiral, windowSize]);
 
   // Touch/mouse handling
   const getAngleFromPoint = (pos: { x: number; y: number }) => {
