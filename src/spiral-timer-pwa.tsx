@@ -355,7 +355,7 @@ const SpiralTimer = () => {
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
     >
-      <canvas ref={setCanvas} className={clsx("w-full h-full', 'cursor-pointer breathe-animation")} />
+      <canvas ref={setCanvas} className={clsx('w-full h-full', 'cursor-pointer breathe-animation')} />
 
       <button
         aria-label={
