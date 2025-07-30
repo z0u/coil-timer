@@ -1,12 +1,17 @@
 {
-  "name": "spiral-timer",
+  "name": "coil-timer",
+  "type": "module",
   "version": "1.0.0",
   "description": "distraction-free visual timer",
-  "main": "index.tsx",
+  "main": "src/main.tsx",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -21,15 +26,15 @@
     "vite": "^7.0.6"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@types/eslint__js": "^8.42.3",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.11"
-  },
-  "prettier": {
-    "singleQuote": true,
-    "trailingComma": "all",
-    "printWidth": 120,
-    "tabWidth": 2
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.11",
+    "typescript-eslint": "^8.38.0"
   }
 }
