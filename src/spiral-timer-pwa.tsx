@@ -366,7 +366,6 @@ const SpiralTimer = () => {
         className={clsx(
           'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
           'block w-(--clock-diameter) h-(--clock-diameter) rounded-full',
-          // 'border-2 border-solid',
         )}
         onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
         onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
@@ -408,7 +407,7 @@ const SpiralTimer = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center gap-4">
           {isOrWas === 'paused' && <Pause size="1em" className="fill-gray-500 stroke-none" />}
           {isOrWas !== 'paused' && <Play size="1em" className="fill-gray-500 stroke-none" />}
-          <span ref={setTimeEl} className="font-mono" />
+          <span ref={setTimeEl} className="font-mono" aria-live="polite" aria-atomic="true" />
         </div>
       </div>
     </div>
