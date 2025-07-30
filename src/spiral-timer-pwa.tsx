@@ -355,7 +355,7 @@ const SpiralTimer = () => {
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
     >
-      <canvas ref={setCanvas} className={clsx('w-full h-full', 'cursor-pointer breathe-animation')} />
+      <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
       <button
         aria-label={
@@ -363,9 +363,11 @@ const SpiralTimer = () => {
             ? 'Timer control: tap to start, drag to adjust time'
             : 'Timer control: tap to pause, drag to adjust time'
         }
+        title="Timer control"
         className={clsx(
           'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
-          'block w-(--clock-diameter) h-(--clock-diameter) rounded-full',
+          'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+          'cursor-pointer',
         )}
         onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
         onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
