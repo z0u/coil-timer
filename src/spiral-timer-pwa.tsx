@@ -1,3 +1,4 @@
+import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWakeLock } from './use-wake-lock';
 
@@ -44,7 +45,6 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
-  const [debugEl, setDebugEl] = useState<HTMLElement | null>(null);
 
   useWakeLock({ enable: timerState.is === 'running' });
 
@@ -176,7 +176,6 @@ const SpiralTimer = () => {
         if (animationFrameRef.current) {
           drawSpiral(timerState.remainingTime);
           if (timeEl) timeEl.textContent = formatTime(timerState.remainingTime);
-          if (debugEl) debugEl.textContent = 'paused';
           cancelAnimationFrame(animationFrameRef.current);
           animationFrameRef.current = 0;
         }
@@ -192,8 +191,6 @@ const SpiralTimer = () => {
         return; // Skip this frame.
       }
       lastFrameTime = t;
-
-      if (debugEl) debugEl.textContent = `${t.toFixed(2)}`;
 
       let newDisplayTime: number;
 
@@ -229,7 +226,7 @@ const SpiralTimer = () => {
         animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, debugEl, timerState, drawSpiral]);
+  }, [timeEl, timerState, drawSpiral]);
 
   // Touch/mouse handling
   const getAngleFromPoint = (pos: { x: number; y: number }) => {
@@ -314,6 +311,14 @@ const SpiralTimer = () => {
     interactionRef.current = null;
   };
 
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    }
+  };
+
   const formatTime = (ms: number) => {
     const totalSeconds = Math.ceil(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -354,11 +359,31 @@ const SpiralTimer = () => {
           showControls ? 'opacity-100' : 'opacity-0'
         }`}
       >
+        <div className="absolute top-6 right-6 pointer-events-auto">
+          <button
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
+          >
+            <Scan size={24} />
+          </button>
+        </div>
+
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <div ref={setTimeEl} className="text-2xl font-mono text-gray-300" />
         </div>
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div ref={setDebugEl} className="font-mono text-gray-300" />
+
+        <div
+          className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'paused' ? 'opacity-100' : 'opacity-0'}`}
+        >
+          <Pause size={24} />
+        </div>
+        <div
+          className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'running' || (timerState.is === 'interacting' && timerState.was === 'running') ? 'opacity-100' : 'opacity-0'}`}
+        >
+          <Play color="currentColor" size={24} />
         </div>
       </div>
     </div>

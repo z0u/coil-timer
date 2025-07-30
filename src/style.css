@@ -15,3 +15,11 @@
 .breathe-animation {
   animation: breathe 120s ease-in-out infinite;
 }
+
+/* Prevent pull-to-refresh/reload gesture on mobile browsers */
+.h-screen {
+  touch-action: none;
+}
+canvas {
+  touch-action: none;
+}
