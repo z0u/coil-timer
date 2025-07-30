@@ -45,7 +45,7 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [debugEl, setDebugEl] = useState<HTMLElement | null>(null);
 
-  useWakeLock({enable: timerState.is === 'running'});
+  useWakeLock({ enable: timerState.is === 'running' });
 
   const animationFrameRef = useRef<number>(0);
   const interactionRef = useRef<Interaction | null>(null);
@@ -89,34 +89,29 @@ const SpiralTimer = () => {
       const hours = timeToDraw / (60 * 60 * 1000);
       const baseRadius = Math.min(width, height) * 0.3;
       const radiusSpacing = 25;
-      const centerX = width / 2;
-      const centerY = height / 2;
+      const totalRevolutions = Math.max(1, Math.ceil(hours));
+      const tracks = getTracks(totalRevolutions, baseRadius, radiusSpacing, timeToDraw);
 
       ctx.save();
       ctx.strokeStyle = '#ef4444';
       ctx.lineCap = 'round';
 
-      const totalRevolutions = Math.max(1, Math.ceil(hours));
+      const centerX = width / 2;
+      const centerY = height / 2;
 
-      for (let rev = 0; rev < totalRevolutions; rev++) {
-        ctx.lineWidth = 8 * (1 - rev / 12) ** 0.25;
-        const radius = baseRadius - rev ** 0.93 * radiusSpacing;
-        if (radius <= 0) continue;
+      // Draw faint tracks as complete circles
+      ctx.globalAlpha = 0.2;
+      for (const { thickness, radius } of tracks.slice(-1)) {
+        ctx.lineWidth = 4 * thickness;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-        const revolutionStart = rev * 60 * 60 * 1000;
-        const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
-
-        let revolutionTime: number;
-        if (timeToDraw >= revolutionEnd) {
-          revolutionTime = min_to_ms(60);
-        } else if (timeToDraw > revolutionStart) {
-          revolutionTime = timeToDraw - revolutionStart;
-        } else {
-          continue;
-        }
-
-        const endAngle = (revolutionTime / min_to_ms(60)) * 2 * Math.PI - Math.PI / 2;
-
+      // Draw revolutions
+      ctx.globalAlpha = 1.0;
+      for (const { thickness, radius, endAngle } of tracks) {
+        ctx.lineWidth = 8 * thickness;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
         ctx.stroke();
@@ -334,3 +329,36 @@ export default SpiralTimer;
 
 const ceilMinutes = (duration: number, minutes: number = 1): number =>
   Math.ceil(duration / min_to_ms(minutes)) * min_to_ms(minutes);
+
+type Track = {
+  rev: number;
+  thickness: number;
+  radius: number;
+  endAngle: number;
+};
+
+const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
+  const tracks: Track[] = [];
+  for (let rev = 0; rev < totalRevolutions; rev++) {
+    const thickness = (1 - rev / 12) ** 0.25;
+    const radius = baseRadius - rev ** 0.93 * radiusSpacing;
+    if (radius <= 0) continue;
+
+    const revolutionStart = rev * 60 * 60 * 1000;
+    const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
+
+    let revolutionTime: number;
+    if (timeToDraw >= revolutionEnd) {
+      revolutionTime = min_to_ms(60);
+    } else if (timeToDraw > revolutionStart) {
+      revolutionTime = timeToDraw - revolutionStart;
+    } else {
+      continue;
+    }
+
+    const endAngle = (revolutionTime / min_to_ms(60)) * 2 * Math.PI - Math.PI / 2;
+
+    tracks.push({ rev, thickness, radius, endAngle });
+  }
+  return tracks;
+};
