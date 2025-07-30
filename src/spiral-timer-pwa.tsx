@@ -31,6 +31,7 @@ const min_to_ms = (m: number): number => sec_to_ms(m * 60);
 
 const TAP_DRAG_TOLERANCE = 12; // px
 const OVERLAY_TIMEOUT = sec_to_ms(5); // ms
+const RUNNING_FPS = 1;
 
 const SpiralTimer = () => {
   const [timerState, setTimerState] = useState<TimerState>({
@@ -158,23 +159,49 @@ const SpiralTimer = () => {
 
   // Main animation loop
   useEffect(() => {
-    const animate = (t) => {
-      if (debugEl) debugEl.textContent = `${t}`;
+    // If paused, we stop the animation loop completely.
+    if (timerState.is === 'paused') {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
+      }
+      // Perform a final draw for the paused state.
+      drawSpiral(timerState.remainingTime);
+      if (timeEl) {
+        timeEl.textContent = formatTime(timerState.remainingTime);
+      }
+      if (debugEl) debugEl.textContent = 'paused';
+      return; // Stop the effect here.
+    }
+
+    let lastFrameTime = 0;
+    const animate = (t: number) => {
+      // When running, we want to limit the frame rate.
+      if (timerState.is === 'running') {
+        const frameInterval = 1000 / RUNNING_FPS;
+        if (t - lastFrameTime < frameInterval) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+          return; // Skip this frame.
+        }
+        lastFrameTime = t;
+      }
+
+      if (debugEl) debugEl.textContent = `${t.toFixed(2)}`;
+
       let newDisplayTime: number;
 
       if (timerState.is === 'interacting') {
         // High-frequency updates during interaction
         newDisplayTime = interactionRef.current!.remainingTime;
-      } else if (timerState.is === 'running') {
+      } else {
         const remaining = timerState.endTime - Date.now();
         if (remaining <= 0) {
           setTimerState({ is: 'paused', remainingTime: 0 });
-          newDisplayTime = 0;
+          // The state change will re-run the effect, which will then stop the loop.
+          return;
         } else {
           newDisplayTime = remaining;
         }
-      } else {
-        newDisplayTime = timerState.remainingTime;
       }
 
       drawSpiral(newDisplayTime);
@@ -185,14 +212,18 @@ const SpiralTimer = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
+    // Start the animation loop.
     animationFrameRef.current = requestAnimationFrame(animate);
 
+    // Cleanup function to cancel the animation frame when the component unmounts
+    // or when the dependencies of the effect change.
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, timerState, drawSpiral]);
+  }, [timeEl, debugEl, timerState, drawSpiral]);
 
   // Touch/mouse handling
   const getAngleFromPoint = (pos: { x: number; y: number }) => {
