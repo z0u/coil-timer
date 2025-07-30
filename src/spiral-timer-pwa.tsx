@@ -294,11 +294,11 @@ const SpiralTimer = () => {
 
       <div
         className={`absolute inset-0 pointer-events-none transition-all duration-500 ease-in-out ${
-          showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8'
+          showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
         }`}
         style={{ zIndex: 10 }}
       >
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <div className="text-2xl font-mono text-gray-300">{formatTime(displayTime)}</div>
         </div>
       </div>
