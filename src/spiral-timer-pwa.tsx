@@ -382,23 +382,14 @@ const SpiralTimer = () => {
               toggleFullscreen();
             }}
           >
-            <Scan size={24} />
+            <Scan size={24} /> <span className="sr-only">Toggle fullscreen</span>
           </button>
         </div>
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div ref={setTimeEl} className="text-[calc(min(5vh,5vw))] font-mono text-gray-300" />
-        </div>
-
-        <div
-          className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'paused' ? 'opacity-100' : 'opacity-0'}`}
-        >
-          <Pause className="w-[2.5vh] h-[2.5vh]" />
-        </div>
-        <div
-          className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'running' || (timerState.is === 'interacting' && timerState.was === 'running') ? 'opacity-100' : 'opacity-0'}`}
-        >
-          <Play className="w-[2.5vh] h-[2.5vh]" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center gap-4">
+          { timerState.is === 'paused' && <Pause size="1em" className="fill-gray-500 stroke-none" /> }
+          { timerState.is !== 'paused' && <Play size="1em" className="fill-gray-500 stroke-none" /> }
+          <span ref={setTimeEl} className="font-mono" />
         </div>
       </div>
     </div>
