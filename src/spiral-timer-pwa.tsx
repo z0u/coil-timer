@@ -375,7 +375,7 @@ const SpiralTimer = () => {
       >
         <div className="absolute top-6 right-6 pointer-events-auto">
           <button
-            className="cursor-pointer"
+            className="cursor-pointer text-gray-400"
             onClick={(e) => {
               e.stopPropagation();
               toggleFullscreen();
@@ -386,18 +386,18 @@ const SpiralTimer = () => {
         </div>
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div ref={setTimeEl} className="text-2xl font-mono text-gray-300" />
+          <div ref={setTimeEl} className="text-[calc(min(2.5vh,2.5vw))] font-mono text-gray-300" />
         </div>
 
         <div
           className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'paused' ? 'opacity-100' : 'opacity-0'}`}
         >
-          <Pause size={24} />
+          <Pause className="w-[2.5vh] h-[2.5vh]" />
         </div>
         <div
           className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-opacity duration-500 ease-in-out ${timerState.is === 'running' || (timerState.is === 'interacting' && timerState.was === 'running') ? 'opacity-100' : 'opacity-0'}`}
         >
-          <Play color="currentColor" size={24} />
+          <Play className="w-[2.5vh] h-[2.5vh]" />
         </div>
       </div>
     </div>
