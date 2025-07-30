@@ -1,14 +1,37 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+interface Running {
+  is: 'running';
+  endTime: number;
+}
+
+interface Paused {
+  is: 'paused';
+  remainingTime: number;
+}
+
+interface Interacting {
+  is: 'interacting';
+  was: 'running' | 'paused';
+  timeWasChanged: boolean;
+  pointerPos: { x: number; y: number };
+  remainingTime: number;
+}
+
+const sec_to_ms = (s: number): number => s * 1000;
+const min_to_ms = (m: number): number => sec_to_ms(m * 60);
+
+const TAP_DRAG_TOLERANCE = 12; // px
+const OVERLAY_TIMEOUT = sec_to_ms(5); // ms
 
 const SpiralTimer = () => {
-  const [duration, setDuration] = useState(min_to_ms(10));
-  const [remainingTime, setRemainingTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [state, setState] = useState<Running | Paused | Interacting>({
+    is: 'paused',
+    remainingTime: min_to_ms(10),
+  });
+
+  const [displayTime, setDisplayTime] = useState(0);
   const [showControls, setShowControls] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [burnInOffset, setBurnInOffset] = useState(0);
 
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [windowSize, setWindowSize] = useState({
@@ -17,12 +40,7 @@ const SpiralTimer = () => {
   });
   const intervalRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
-  const burnInIntervalRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-  const prevAngleRef = useRef(0);
-  const cumulativeDTRef = useRef(0);
-
-  const roundedDuration = ceilMinutes(duration);
 
   // Request wake lock
   const requestWakeLock = useCallback(async () => {
@@ -48,11 +66,6 @@ const SpiralTimer = () => {
   useEffect(() => {
     requestWakeLock();
 
-    // Subtle burn-in prevention animation (scale changes every 30 seconds)
-    burnInIntervalRef.current = setInterval(() => {
-      setBurnInOffset((prev) => (prev + 0.003) % 0.02); // Very subtle scale variation
-    }, 30000);
-
     // Handle visibility change to re-acquire wake lock
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !wakeLockRef.current) {
@@ -63,54 +76,51 @@ const SpiralTimer = () => {
 
     return () => {
       releaseWakeLock();
-      if (burnInIntervalRef.current) clearInterval(burnInIntervalRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [requestWakeLock, releaseWakeLock]);
 
   // Timer logic
   useEffect(() => {
-    if (isRunning && !isPaused && remainingTime > 0) {
+    if (state.is === 'interacting' && state.timeWasChanged) {
+      setDisplayTime(ceilMinutes(state.remainingTime));
+    } else if (state.is === 'running') {
       intervalRef.current = setInterval(() => {
-        setRemainingTime((prev) => {
-          if (prev <= 1000) {
-            setIsRunning(false);
-            setIsPaused(false);
+        setDisplayTime(() => {
+          const timeRemaining = state.endTime - Date.now();
+          if (timeRemaining <= 0) {
+            setState({ is: 'paused', remainingTime: 0 });
             return 0;
           }
-          return prev - 1000;
+          return timeRemaining;
         });
-      }, 1000);
+      }, 500);
     } else {
+      setDisplayTime(state.remainingTime);
+    }
+
+    return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, isPaused, remainingTime]);
-
-  // Auto-hide controls
-  const resetControlsTimeout = useCallback(() => {
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    if (showControls && !isDragging) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 15000);
-    }
-  }, [showControls, isDragging]);
+  }, [state]);
 
   useEffect(() => {
-    resetControlsTimeout();
+    if (state.is === 'running') {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), OVERLAY_TIMEOUT);
+    } else {
+      setShowControls(true);
+    }
+
     return () => {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
     };
-  }, [resetControlsTimeout]);
+  }, [state]);
 
   useEffect(() => {
     const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
@@ -130,15 +140,13 @@ const SpiralTimer = () => {
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    const timeToShow = isDragging ? roundedDuration : isRunning || isPaused ? remainingTime : roundedDuration;
-    if (timeToShow <= 0) return;
+    const timeToShow = displayTime;
 
     const hours = timeToShow / (60 * 60 * 1000);
     const baseRadius = Math.min(rect.width, rect.height) * 0.3;
     const radiusSpacing = 25;
 
     // Apply subtle burn-in prevention scaling
-    const scale = 1 + burnInOffset;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
@@ -155,16 +163,16 @@ const SpiralTimer = () => {
       const revolutionStart = rev * 60 * 60 * 1000;
       const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
 
-      let revolutionTime;
+      let revolutionTime: number;
       if (timeToShow >= revolutionEnd) {
-        revolutionTime = 60 * 60 * 1000; // Full hour
+        revolutionTime = min_to_ms(60);
       } else if (timeToShow > revolutionStart) {
         revolutionTime = timeToShow - revolutionStart;
       } else {
         continue;
       }
 
-      const endAngle = (revolutionTime / (60 * 60 * 1000)) * 2 * Math.PI - Math.PI / 2;
+      const endAngle = (revolutionTime / min_to_ms(60)) * 2 * Math.PI - Math.PI / 2;
 
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
@@ -172,84 +180,83 @@ const SpiralTimer = () => {
     }
 
     ctx.restore();
-  }, [canvas, windowSize, duration, roundedDuration, remainingTime, isRunning, isPaused, burnInOffset]);
+  }, [canvas, windowSize, displayTime]);
 
   useEffect(() => {
     drawSpiral();
   }, [drawSpiral]);
 
   // Touch/mouse handling
-  const getAngleFromPoint = (clientX: number, clientY: number) => {
+  const getAngleFromPoint = (pos: { x: number; y: number }) => {
     if (!canvas) return 0;
     const rect = canvas.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    const dx = clientX - centerX;
-    const dy = clientY - centerY;
+    const dx = pos.x - centerX;
+    const dy = pos.y - centerY;
     let angle = Math.atan2(dy, dx) + Math.PI / 2;
     if (angle < 0) angle += 2 * Math.PI;
     return angle;
   };
 
-  const dragStart = (clientX: number, clientY: number) => {
-    if (isRunning) return;
-
-    setIsDragging(true);
-    prevAngleRef.current = getAngleFromPoint(clientX, clientY);
-    cumulativeDTRef.current = 0;
-  };
-
-  const drag = (clientX: number, clientY: number) => {
-    if (!isDragging || isRunning) return;
-
-    const currentAngle = getAngleFromPoint(clientX, clientY);
-    let deltaAngle = currentAngle - prevAngleRef.current;
-
-    if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
-    if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
-
-    const deltaTime = (deltaAngle / (2 * Math.PI)) * 60 * min_to_ms(1);
-    const newDuration = Math.max(0, duration + deltaTime);
-
-    setDuration(newDuration);
-    prevAngleRef.current = currentAngle;
-    cumulativeDTRef.current += Math.abs(deltaTime);
-  };
-
-  const dragEnd = () => {
-    setIsDragging(false);
-  };
-
-  const handleCanvasClick = () => {
-    if (cumulativeDTRef.current > min_to_ms(1)) {
-      setRemainingTime(roundedDuration);
-      return; // Dragged to change duration
-    }
-    setShowControls(!showControls);
-  };
-
-  const startTimer = () => {
-    if (roundedDuration > 0) {
-      setIsRunning(true);
-      setIsPaused(false);
-      if (remainingTime === 0) {
-        setRemainingTime(roundedDuration);
-      }
+  const pointerDown = (pos: { x: number; y: number }) => {
+    if (state.is !== 'interacting') {
+      setState({
+        is: 'interacting',
+        was: state.is,
+        timeWasChanged: false,
+        pointerPos: pos,
+        remainingTime: state.is === 'running' ? state.endTime - Date.now() : state.remainingTime,
+      });
     }
   };
 
-  const pauseTimer = () => {
-    setIsPaused(!isPaused);
+  const pointerMove = (pos: { x: number; y: number }) => {
+    if (state.is !== 'interacting') return;
+
+    const lastPos = state.pointerPos;
+    const dist = Math.sqrt((pos.x - lastPos.x) ** 2 + (pos.y - lastPos.y) ** 2);
+
+    if (dist < TAP_DRAG_TOLERANCE || state.timeWasChanged) {
+      const lastAngle = getAngleFromPoint(lastPos);
+      const currentAngle = getAngleFromPoint(pos);
+      let deltaAngle = currentAngle - lastAngle;
+
+      if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+      if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
+
+      const deltaTime = (deltaAngle / (2 * Math.PI)) * min_to_ms(60);
+      const newDuration = Math.max(0, state.remainingTime + deltaTime);
+
+      setState({ ...state, timeWasChanged: true, pointerPos: pos, remainingTime: newDuration });
+    }
   };
 
-  const resetTimer = () => {
-    setIsRunning(false);
-    setIsPaused(false);
-    setRemainingTime(roundedDuration);
+  const pointerUp = () => {
+    if (state.is !== 'interacting') return;
+
+    let nextState: 'running' | 'paused';
+    let remainingTime: number;
+    if (state.timeWasChanged) {
+      nextState = state.was;
+      remainingTime = ceilMinutes(state.remainingTime);
+    } else if (state.was === 'running') {
+      nextState = 'paused';
+      remainingTime = state.remainingTime;
+    } else {
+      nextState = 'running';
+      remainingTime = state.remainingTime;
+    }
+
+    if (nextState === 'running') {
+      setState({ is: 'running', endTime: Date.now() + remainingTime });
+    } else {
+      setState({ is: 'paused', remainingTime: remainingTime });
+    }
   };
 
-  const formatTime = (ms) => {
+  const formatTime = (ms: number) => {
     const hours = Math.floor(ms / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((ms % (60 * 1000)) / 1000);
@@ -265,24 +272,23 @@ const SpiralTimer = () => {
       <canvas
         ref={setCanvas}
         className="w-full h-full cursor-pointer breathe-animation"
-        onClick={handleCanvasClick}
-        onMouseDown={(e) => dragStart(e.clientX, e.clientY)}
-        onMouseMove={(e) => drag(e.clientX, e.clientY)}
-        onMouseUp={dragEnd}
-        onMouseLeave={dragEnd}
+        onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
+        onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
+        onMouseUp={pointerUp}
+        onMouseLeave={pointerUp}
         onTouchStart={(e) => {
           e.preventDefault();
           const touch = e.touches[0];
-          dragStart(touch.clientX, touch.clientY);
+          pointerDown({ x: touch.clientX, y: touch.clientY });
         }}
         onTouchMove={(e) => {
           e.preventDefault();
           const touch = e.touches[0];
-          drag(touch.clientX, touch.clientY);
+          pointerMove({ x: touch.clientX, y: touch.clientY });
         }}
         onTouchEnd={(e) => {
           e.preventDefault();
-          dragEnd();
+          pointerUp();
         }}
       />
 
@@ -292,43 +298,8 @@ const SpiralTimer = () => {
         }`}
         style={{ zIndex: 10 }}
       >
-        {/* Duration display while dragging or setting */}
-        {(isDragging || (!isRunning && !isPaused && roundedDuration > 0)) && showControls && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
-            <div className="text-2xl font-mono text-gray-300">{formatTime(roundedDuration)}</div>
-          </div>
-        )}
-
-        {/* Running time display */}
-        {(isRunning || isPaused) && showControls && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
-            <div className="text-2xl font-mono text-gray-300">{formatTime(remainingTime)}</div>
-          </div>
-        )}
-
-        {/* Control buttons */}
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-8 pointer-events-auto flex items-center justify-center ">
-          <button
-            onClick={resetTimer}
-            className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors"
-          >
-            <RotateCcw size={20} />
-          </button>
-
-          <button
-            onClick={isRunning ? pauseTimer : startTimer}
-            disabled={duration === 0}
-            className="w-16 h-16 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 rounded-full flex items-center justify-center transition-colors"
-          >
-            {isRunning && !isPaused ? <Pause size={24} /> : <Play size={24} />}
-          </button>
-
-          <button
-            onClick={() => setDuration((prev) => prev + min_to_ms(5))}
-            className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors text-xl"
-          >
-            +
-          </button>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-16 pointer-events-none">
+          <div className="text-2xl font-mono text-gray-300">{formatTime(displayTime)}</div>
         </div>
       </div>
     </div>
@@ -342,5 +313,3 @@ const ceilMinutes = (duration: number, minutes: number = 1): number =>
 
 const roundToMinutes = (duration: number, minutes: number = 1): number =>
   Math.round(duration / min_to_ms(minutes)) * min_to_ms(minutes);
-
-const min_to_ms = (m: number): number => m * 60 * 1000;
