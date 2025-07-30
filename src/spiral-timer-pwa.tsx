@@ -1,8 +1,8 @@
+import clsx from 'clsx';
 import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWakeLock } from './use-wake-lock';
 import { useWindowSize } from './use-window-size';
-import clsx from 'clsx';
 
 // State definitions
 interface Running {
@@ -350,10 +350,33 @@ const SpiralTimer = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Wheel gesture handler for adding/subtracting time
+  const handleWheel = (e: React.WheelEvent<HTMLElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY;
+    // 1 minute per notch, invert for natural scroll
+    const change = delta > 0 ? min_to_ms(-0.5) : min_to_ms(0.5);
+    if (timerState.is === 'paused') {
+      const newTime = Math.max(0, timerState.remainingTime + change);
+      setTimerState({ ...timerState, remainingTime: newTime });
+    } else if (timerState.is === 'running') {
+      const remaining = timerState.endTime - Date.now();
+      const newRemaining = Math.max(0, remaining + change);
+      if (newRemaining <= 0) {
+        setTimerState({ is: 'paused', remainingTime: 0 });
+      } else {
+        setTimerState({ is: 'running', endTime: Date.now() + newRemaining });
+      }
+    } else if (timerState.is === 'interacting') {
+      // Do nothing: already dragging
+    }
+    lastInteractionTimeRef.current = Date.now();
+  };
   return (
     <div
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
+      onWheel={handleWheel}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
