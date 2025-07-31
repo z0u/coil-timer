@@ -2,20 +2,18 @@ import clsx from 'clsx';
 import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
+import { JogDial, JogEvent } from './JogDial';
 import { ceilMinutes, minToMs, secToMs } from './time-utils';
+import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
 import { useWakeLock } from './useWakeLock';
-import { useDrawClockFace } from './useDrawClockFace';
 
-// Interaction state (using useRef to avoid re-renders on every move)
-interface Interaction {
-  timeWasChanged: boolean;
-  pointerPos: { x: number; y: number };
+// Interaction state for timer duration adjustments
+interface TimerInteraction {
   remainingTime: number;
 }
 
-const TAP_DRAG_TOLERANCE = 12; // px
 const OVERLAY_TIMEOUT = secToMs(5); // ms
 const RUNNING_FPS = 1;
 const MAX_FPS = 30;
@@ -32,7 +30,7 @@ const SpiralTimer = () => {
   useWakeLock({ enable: timerState.is === 'running' });
 
   const animationFrameRef = useRef<number>(0);
-  const interactionRef = useRef<Interaction | null>(null);
+  const timerInteractionRef = useRef<TimerInteraction | null>(null);
   const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
   const manualControlsOverride = useRef<boolean | null>(null);
@@ -59,7 +57,7 @@ const SpiralTimer = () => {
     };
   }, [timerState.is]);
 
-  const {drawClockFace, dimensions} = useDrawClockFace({ canvas });
+  const { drawClockFace, dimensions } = useDrawClockFace({ canvas });
 
   // Main animation loop
   useEffect(() => {
@@ -94,7 +92,7 @@ const SpiralTimer = () => {
       let newDisplayTime: number;
 
       if (timerState.is === 'interacting') {
-        newDisplayTime = interactionRef.current!.remainingTime;
+        newDisplayTime = timerInteractionRef.current!.remainingTime;
       } else if (timerState.is === 'running') {
         const remaining = timerState.endTime - Date.now();
         if (remaining <= 0) {
@@ -127,86 +125,73 @@ const SpiralTimer = () => {
     };
   }, [timeEl, timerState, drawClockFace, visible]);
 
-  // Touch/mouse handling
-  const getAngleFromPoint = (pos: { x: number; y: number }) => {
-    if (!canvas) return 0;
-    const rect = canvas.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dx = pos.x - centerX;
-    const dy = pos.y - centerY;
-    let angle = Math.atan2(dy, dx) + Math.PI / 2;
-    if (angle < 0) angle += 2 * Math.PI;
-    return angle;
-  };
-
-  const pointerDown = (pos: { x: number; y: number }) => {
+  // ButtonKnob interaction handlers
+  const handleKnobInteractionStart = useCallback(() => {
     if (timerState.is === 'interacting') return;
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
-    interactionRef.current = {
-      timeWasChanged: false,
-      pointerPos: pos,
-      remainingTime,
-    };
+    timerInteractionRef.current = { remainingTime };
     setTimerState({ is: 'interacting', was: timerState.is, remainingTime });
-  };
+  }, [timerState]);
 
-  const pointerMove = (pos: { x: number; y: number }) => {
+  const handleKnobInteractionMove = useCallback(
+    (event: JogEvent) => {
+      if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
+
+      const deltaTime = (event.deltaAngle / (2 * Math.PI)) * minToMs(60);
+      const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
+      timerInteractionRef.current.remainingTime = newDuration;
+    },
+    [timerState],
+  );
+
+  const handleKnobInteractionEnd = useCallback(
+    (event: JogEvent) => {
+      if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
+      lastInteractionTimeRef.current = Date.now();
+
+      let nextState: 'running' | 'paused';
+      let newRemainingTime: number;
+
+      if (event.wasDragged) {
+        nextState = timerState.was;
+        newRemainingTime = ceilMinutes(timerInteractionRef.current.remainingTime);
+      } else {
+        // This shouldn't happen since tap is handled separately, but just in case
+        nextState = timerState.was === 'running' ? 'paused' : 'running';
+        newRemainingTime = timerInteractionRef.current.remainingTime;
+      }
+
+      if (newRemainingTime <= 0) {
+        nextState = 'paused';
+        newRemainingTime = 0;
+      }
+
+      if (nextState === 'running') {
+        setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
+      } else {
+        setTimerState({ is: 'paused', remainingTime: newRemainingTime });
+      }
+    },
+    [timerState],
+  );
+
+  const handleKnobTap = useCallback(() => {
     if (timerState.is !== 'interacting') return;
-    const interaction = interactionRef.current!;
-
-    const lastPos = interaction.pointerPos;
-    const dist = Math.sqrt((pos.x - lastPos.x) ** 2 + (pos.y - lastPos.y) ** 2);
-
-    if (!interaction.timeWasChanged && dist > TAP_DRAG_TOLERANCE) {
-      interaction.timeWasChanged = true;
-    }
-
-    if (interaction.timeWasChanged) {
-      const lastAngle = getAngleFromPoint(lastPos);
-      const currentAngle = getAngleFromPoint(pos);
-      let deltaAngle = currentAngle - lastAngle;
-
-      if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
-      if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
-
-      const deltaTime = (deltaAngle / (2 * Math.PI)) * minToMs(60);
-      const newDuration = Math.max(0, interaction.remainingTime + deltaTime);
-
-      interaction.remainingTime = newDuration;
-      interaction.pointerPos = pos;
-    }
-  };
-
-  const pointerUp = () => {
-    if (timerState.is !== 'interacting') return;
-    const interaction = interactionRef.current!;
     lastInteractionTimeRef.current = Date.now();
 
-    let nextState: 'running' | 'paused';
-    let newRemainingTime: number;
+    // Toggle play/pause on tap
+    const nextState = timerState.was === 'running' ? 'paused' : 'running';
+    const remainingTime = timerInteractionRef.current!.remainingTime;
 
-    if (interaction.timeWasChanged) {
-      nextState = timerState.was;
-      newRemainingTime = ceilMinutes(interaction.remainingTime);
+    if (remainingTime <= 0) {
+      setTimerState({ is: 'paused', remainingTime: 0 });
+    } else if (nextState === 'running') {
+      setTimerState({ is: 'running', endTime: Date.now() + remainingTime });
     } else {
-      // Tap gesture: toggle play/pause
-      nextState = timerState.was === 'running' ? 'paused' : 'running';
-      newRemainingTime = interaction.remainingTime;
+      setTimerState({ is: 'paused', remainingTime });
     }
-
-    if (newRemainingTime <= 0) {
-      nextState = 'paused';
-      newRemainingTime = 0;
-    }
-
-    if (nextState === 'running') {
-      setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
-    } else {
-      setTimerState({ is: 'paused', remainingTime: newRemainingTime });
-    }
-  };
+  }, [timerState]);
 
   // Click/double-click logic
   const clickTimeoutRef = useRef<number | null>(null);
@@ -309,13 +294,13 @@ const SpiralTimer = () => {
     <div
       ref={setContainer}
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
-      style={{ '--clock-diameter': `${dimensions?.innerRadius ?? 100 * 2}px` } as React.CSSProperties}
+      style={{ '--clock-diameter': `${(dimensions?.innerRadius ?? 100) * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
       onDoubleClick={handleBackgroundDoubleClick}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
-      <button
+      <JogDial
         aria-label={
           isOrWas === 'paused'
             ? 'Timer control: tap to start, drag to adjust time'
@@ -325,25 +310,12 @@ const SpiralTimer = () => {
         className={clsx(
           'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
           'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
-          'cursor-pointer',
-          'touch-none', // Prevent reload on drag on mobile
         )}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          pointerDown({ x: e.clientX, y: e.clientY });
-          (e.target as HTMLElement).setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          e.stopPropagation();
-          pointerMove({ x: e.clientX, y: e.clientY });
-        }}
-        onLostPointerCapture={(e) => {
-          e.stopPropagation();
-          pointerUp();
-          (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-        }}
-        onClick={(e) => e.stopPropagation()}
-      ></button>
+        onInteractionStart={handleKnobInteractionStart}
+        onInteractionMove={handleKnobInteractionMove}
+        onInteractionEnd={handleKnobInteractionEnd}
+        onTap={handleKnobTap}
+      />
 
       <div
         className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ease-in-out z-10 ${
