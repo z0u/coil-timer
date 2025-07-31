@@ -1,6 +1,8 @@
 import clsx from 'clsx';
-import { Pause, Play, Scan } from 'lucide-react';
+import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatedColon } from './AnimatedColon';
+import { min_to_ms, sec_to_ms } from './time-utils';
 import { usePersistentTimerState } from './use-persistent-timer-state';
 import { useVisibility } from './use-visibility';
 import { useWakeLock } from './use-wake-lock';
@@ -12,9 +14,6 @@ interface Interaction {
   pointerPos: { x: number; y: number };
   remainingTime: number;
 }
-
-const sec_to_ms = (s: number): number => s * 1000;
-const min_to_ms = (m: number): number => sec_to_ms(m * 60);
 
 const CLOCK_DIAMETER = 0.8; // min(vh, vw)
 const TRACK_SPACING = 0.035; // min(vh, vw)
@@ -351,12 +350,11 @@ const SpiralTimer = () => {
     const totalSeconds = Math.ceil(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}`;
   };
 
   // Wheel gesture handler for adding/subtracting time
@@ -472,10 +470,9 @@ const SpiralTimer = () => {
           </button>
         </div>
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center gap-4">
-          {isOrWas === 'paused' && <Pause size="1em" className="fill-gray-500 stroke-none" />}
-          {isOrWas !== 'paused' && <Play size="1em" className="fill-gray-500 stroke-none" />}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center">
           <span ref={setTimeEl} className="font-mono" aria-live="polite" aria-atomic="true" />
+          <AnimatedColon isRunning={timerState.is === 'running'} />
         </div>
       </div>
     </div>
