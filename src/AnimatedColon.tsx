@@ -1,39 +1,33 @@
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
-import { secToMs } from './time-utils';
+
+type AnimatedColonProps = {
+  isRunning: boolean;
+};
 
 /** A `:` character that cycles through: none, top, both, bottom, none... */
-export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
-  const [state, setState] = useState(0); // 0: none, 1: top, 2: both, 3: bottom
-
-  useEffect(() => {
-    if (!isRunning) {
-      setState(2); // show both dots when not running
-      return;
-    }
-    const interval = setInterval(() => {
-      setState((s) => (s + 1) % 4);
-    }, secToMs(0.5));
-    return () => clearInterval(interval);
-  }, [isRunning]);
-
+export const AnimatedColon = ({ isRunning }: AnimatedColonProps) => {
   return (
-    <span className="relative h-[1em] inline-block align-text-top" aria-hidden="true">
-      <span className="opacity-1">:</span>
+    <span
+      className={clsx(
+        'relative h-[1em] inline-block align-text-top',
+        'transition-opacity duration-200',
+        isRunning ? 'opacity-100' : 'opacity-0',
+      )}
+      aria-hidden="true"
+    >
+      <span className="opacity-0">:</span>
       <span
         className={clsx(
           'absolute left-1/2 top-[43%] -translate-x-1/2 size-[0.125em]',
           'rounded-full bg-current',
-          'transition-opacity duration-200',
-          state === 1 || state === 2 ? 'opacity-100' : 'opacity-30',
+          'animate-[colon-dot_1s_ease_infinite]',
         )}
       />
       <span
         className={clsx(
           'absolute left-1/2 top-[75%] -translate-x-1/2 size-[0.125em]',
           'rounded-full bg-current',
-          'transition-opacity duration-200',
-          state === 2 || state === 3 ? 'opacity-100' : 'opacity-30',
+          'animate-[colon-dot_1s_0.5s_ease_infinite]',
         )}
       />
     </span>

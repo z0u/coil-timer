@@ -386,3 +386,21 @@
   /* Unrolled version uses less GPU (~80% less, 6% -> 1%) */
   animation: breathe-unrolled 120s step-end infinite;
 }
+
+@keyframes colon-dot {
+  0% {
+    opacity: 0.3;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
