@@ -3,7 +3,7 @@ import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
-import { ceilMinutes, minToMs, secToMs } from './time-utils';
+import { minToMs, roundMinutes, secToMs } from './time-utils';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
@@ -12,6 +12,7 @@ import { useWakeLock } from './useWakeLock';
 // Interaction state for timer duration adjustments
 interface TimerInteraction {
   remainingTime: number;
+  hasChanged: boolean;
 }
 
 const OVERLAY_TIMEOUT = secToMs(5); // ms
@@ -89,26 +90,30 @@ const SpiralTimer = () => {
       }
       lastFrameTime = t;
 
-      let newDisplayTime: number;
+      let dialTime: number;
+      let numericTime: number;
 
       if (timerState.is === 'interacting') {
-        newDisplayTime = timerInteractionRef.current!.remainingTime;
+        dialTime = timerInteractionRef.current!.remainingTime;
+        if (timerInteractionRef.current!.hasChanged) {
+          numericTime = roundMinutes(dialTime);
+        } else {
+          numericTime = dialTime;
+        }
       } else if (timerState.is === 'running') {
         const remaining = timerState.endTime - Date.now();
         if (remaining <= 0) {
           setTimerState({ is: 'paused', remainingTime: 0 });
           return; // State change will re-run the effect.
         }
-        newDisplayTime = remaining;
+        dialTime = numericTime = remaining;
       } else {
         // Paused, but still in the high-frame-rate grace period.
-        newDisplayTime = timerState.remainingTime;
+        dialTime = numericTime = timerState.remainingTime;
       }
 
-      drawClockFace(newDisplayTime);
-      if (timeEl) {
-        timeEl.textContent = formatTime(newDisplayTime);
-      }
+      drawClockFace(dialTime);
+      if (timeEl) timeEl.textContent = formatTime(roundMinutes(numericTime));
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };
@@ -125,73 +130,53 @@ const SpiralTimer = () => {
     };
   }, [timeEl, timerState, drawClockFace, visible]);
 
-  // ButtonKnob interaction handlers
-  const handleKnobInteractionStart = useCallback(() => {
+  // JogDial interaction handlers
+  const handleJogStart = () => {
     if (timerState.is === 'interacting') return;
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
-    timerInteractionRef.current = { remainingTime };
+    timerInteractionRef.current = { remainingTime, hasChanged: false };
     setTimerState({ is: 'interacting', was: timerState.is, remainingTime });
-  }, [timerState]);
+  };
 
-  const handleKnobInteractionMove = useCallback(
-    (event: JogEvent) => {
-      if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
+  const handleJogMove = (event: JogEvent) => {
+    if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
-      const deltaTime = (event.deltaAngle / (2 * Math.PI)) * minToMs(60);
-      const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
-      timerInteractionRef.current.remainingTime = newDuration;
-    },
-    [timerState],
-  );
+    const deltaTime = (event.deltaAngle / (2 * Math.PI)) * minToMs(60);
+    const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
+    timerInteractionRef.current.remainingTime = newDuration;
+    timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached
+  };
 
-  const handleKnobInteractionEnd = useCallback(
-    (event: JogEvent) => {
-      if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
-      lastInteractionTimeRef.current = Date.now();
-
-      let nextState: 'running' | 'paused';
-      let newRemainingTime: number;
-
-      if (event.wasDragged) {
-        nextState = timerState.was;
-        newRemainingTime = ceilMinutes(timerInteractionRef.current.remainingTime);
-      } else {
-        // This shouldn't happen since tap is handled separately, but just in case
-        nextState = timerState.was === 'running' ? 'paused' : 'running';
-        newRemainingTime = timerInteractionRef.current.remainingTime;
-      }
-
-      if (newRemainingTime <= 0) {
-        nextState = 'paused';
-        newRemainingTime = 0;
-      }
-
-      if (nextState === 'running') {
-        setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
-      } else {
-        setTimerState({ is: 'paused', remainingTime: newRemainingTime });
-      }
-    },
-    [timerState],
-  );
-
-  const handleKnobTap = useCallback(() => {
-    if (timerState.is !== 'interacting') return;
+  const handleJogEnd = (event: JogEvent) => {
+    if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
     lastInteractionTimeRef.current = Date.now();
 
-    // Toggle play/pause on tap
-    const nextState = timerState.was === 'running' ? 'paused' : 'running';
-    const remainingTime = timerInteractionRef.current!.remainingTime;
+    const { remainingTime } = timerInteractionRef.current;
+    let nextState: 'running' | 'paused';
+    let newRemainingTime: number;
 
-    if (remainingTime <= 0) {
-      setTimerState({ is: 'paused', remainingTime: 0 });
-    } else if (nextState === 'running') {
-      setTimerState({ is: 'running', endTime: Date.now() + remainingTime });
+    if (event.wasDragged) {
+      // If dragged, round to the nearest minute and resume previous state
+      nextState = timerState.was;
+      newRemainingTime = roundMinutes(remainingTime);
     } else {
-      setTimerState({ is: 'paused', remainingTime });
+      // If tapped, toggle between running and paused
+      nextState = timerState.was === 'running' ? 'paused' : 'running';
+      newRemainingTime = remainingTime;
     }
-  }, [timerState]);
+
+    if (newRemainingTime <= 0) {
+      nextState = 'paused';
+      newRemainingTime = 0;
+    }
+
+    if (nextState === 'running') {
+      setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
+    } else {
+      setTimerState({ is: 'paused', remainingTime: newRemainingTime });
+    }
+  };
 
   // Click/double-click logic
   const clickTimeoutRef = useRef<number | null>(null);
@@ -316,10 +301,9 @@ const SpiralTimer = () => {
           'transition-opacity duration-500',
           showControls ? 'opacity-100' : 'opacity-0',
         )}
-        onInteractionStart={handleKnobInteractionStart}
-        onInteractionMove={handleKnobInteractionMove}
-        onInteractionEnd={handleKnobInteractionEnd}
-        onTap={handleKnobTap}
+        onJogStart={handleJogStart}
+        onJogMove={handleJogMove}
+        onJogEnd={handleJogEnd}
       >
         <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
         <span className="inline-block w-0 flex items-baseline">

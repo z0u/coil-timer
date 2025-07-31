@@ -14,13 +14,11 @@ export interface JogDialProps {
   /** Tooltip title */
   title?: string;
   /** Called when pointer is pressed down */
-  onInteractionStart?: () => void;
+  onJogStart?: () => void;
   /** Called during pointer movement with angle delta */
-  onInteractionMove?: (interaction: JogEvent) => void;
+  onJogMove?: (event: JogEvent) => void;
   /** Called when pointer is released */
-  onInteractionEnd?: (interaction: JogEvent) => void;
-  /** Called on tap (click without drag) */
-  onTap?: () => void;
+  onJogEnd?: (event: JogEvent) => void;
   /** Distance threshold in pixels to distinguish tap from drag */
   dragTolerance?: number;
   /** Child elements to render inside the button */
@@ -41,10 +39,9 @@ export const JogDial: React.FC<JogDialProps> = ({
   className,
   'aria-label': ariaLabel,
   title,
-  onInteractionStart,
-  onInteractionMove,
-  onInteractionEnd,
-  onTap,
+  onJogStart,
+  onJogMove,
+  onJogEnd,
   dragTolerance = TAP_DRAG_TOLERANCE,
   children,
 }) => {
@@ -63,7 +60,7 @@ export const JogDial: React.FC<JogDialProps> = ({
     };
 
     element.setPointerCapture(e.pointerId);
-    onInteractionStart?.();
+    onJogStart?.();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -91,7 +88,7 @@ export const JogDial: React.FC<JogDialProps> = ({
       if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
       if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
 
-      onInteractionMove?.({
+      onJogMove?.({
         deltaAngle,
         wasDragged: interaction.wasDragged,
       });
@@ -107,14 +104,10 @@ export const JogDial: React.FC<JogDialProps> = ({
     const interaction = interactionRef.current;
     const wasDragged = interaction.wasDragged;
 
-    onInteractionEnd?.({
+    onJogEnd?.({
       deltaAngle: 0, // Not used in end callback
       wasDragged,
     });
-
-    if (!wasDragged) {
-      onTap?.();
-    }
 
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     interactionRef.current = null;
