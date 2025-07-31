@@ -490,9 +490,9 @@ const SpiralTimer = () => {
           </button>
         </div>
 
-        <div className="absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(10vh,10vw))] text-gray-300 text-shadow-lg/30">
-          <span ref={setTimeEl} className="font-[Inconsolata,monospace]" aria-live="polite" aria-atomic="true" />
-          <span className="inline-block w-0">
+        <div className="absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(10vh,10vw))] text-gray-300 text-shadow-lg/30 flex items-baseline leading-none font-[Inconsolata,monospace]">
+          <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
+          <span className="inline-block w-0 flex items-baseline">
             <AnimatedColon isRunning={timerState.is === 'running'} />
           </span>
         </div>

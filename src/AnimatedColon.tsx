@@ -22,7 +22,7 @@ export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
       <span className="opacity-1">:</span>
       <span
         className={clsx(
-          'absolute left-1/2 bottom-[34%] -translate-x-1/2 size-[0.13em]',
+          'absolute left-1/2 top-[43%] -translate-x-1/2 size-[0.125em]',
           'rounded-full bg-current',
           'transition-opacity duration-200',
           state === 1 || state === 2 ? 'opacity-100' : 'opacity-30',
@@ -30,7 +30,7 @@ export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
       />
       <span
         className={clsx(
-          'absolute left-1/2 bottom-[1%] -translate-x-1/2 size-[0.13em]',
+          'absolute left-1/2 top-[75%] -translate-x-1/2 size-[0.125em]',
           'rounded-full bg-current',
           'transition-opacity duration-200',
           state === 2 || state === 3 ? 'opacity-100' : 'opacity-30',
