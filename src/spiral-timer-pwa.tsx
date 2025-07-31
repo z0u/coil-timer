@@ -471,7 +471,13 @@ const SpiralTimer = () => {
         </div>
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(5vh,5vw))] text-gray-300 flex items-center">
-          <span ref={setTimeEl} className="font-mono" aria-live="polite" aria-atomic="true" />
+          <span
+            ref={setTimeEl}
+            // className="font-family-[Inconsolata, monospace]"
+            style={{ fontFamily: 'Inconsolata, monospace' }}
+            aria-live="polite"
+            aria-atomic="true"
+          />
           <AnimatedColon isRunning={timerState.is === 'running'} />
         </div>
       </div>
