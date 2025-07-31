@@ -2,11 +2,11 @@ import clsx from 'clsx';
 import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
-import { minToMs, secToMs } from './time-utils';
+import { ceilMinutes, minToMs, secToMs } from './time-utils';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
 import { useWakeLock } from './useWakeLock';
-import { useWindowSize } from './useWindowSize';
+import { useDrawClockFace } from './useDrawClockFace';
 
 // Interaction state (using useRef to avoid re-renders on every move)
 interface Interaction {
@@ -14,16 +14,6 @@ interface Interaction {
   pointerPos: { x: number; y: number };
   remainingTime: number;
 }
-
-const CLOCK_DIAMETER = 0.8; // min(vh, vw)
-const TRACK_SPACING = 0.035; // min(vh, vw)
-const TRACK_WIDTH = 0.015; // min(vh, vw)
-
-const TICK_OUTER_DIA = 0.9;
-const MAJOR_TICK_LENGTH = 0.014;
-const MAJOR_TICK_WIDTH = 0.012;
-const MINOR_TICK_LENGTH = 0.008;
-const MINOR_TICK_WIDTH = 0.008;
 
 const TAP_DRAG_TOLERANCE = 12; // px
 const OVERLAY_TIMEOUT = secToMs(5); // ms
@@ -38,7 +28,6 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
-  const windowSize = useWindowSize();
   const visible = useVisibility();
   useWakeLock({ enable: timerState.is === 'running' });
 
@@ -48,7 +37,6 @@ const SpiralTimer = () => {
   const controlsTimeoutRef = useRef<number | null>(null);
   const manualControlsOverride = useRef<boolean | null>(null);
 
-  const diameter = Math.min(windowSize.width, windowSize.height) * CLOCK_DIAMETER;
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
   // Show/hide controls based on timer state
@@ -71,102 +59,7 @@ const SpiralTimer = () => {
     };
   }, [timerState.is]);
 
-  // Canvas drawing logic
-  const drawSpiral = useCallback(
-    (timeToDraw: number) => {
-      const ctx = canvas?.getContext('2d');
-      if (!canvas || !ctx) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-
-      // Resize canvas if needed
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
-      }
-
-      ctx.clearRect(0, 0, width, height);
-
-      const hours = timeToDraw / (60 * 60 * 1000);
-      const screenDiameter = Math.min(width, height);
-      const baseRadius = (screenDiameter * CLOCK_DIAMETER) / 2;
-      const trackSpacing = screenDiameter * TRACK_SPACING;
-      const totalRevolutions = Math.max(1, Math.ceil(hours));
-      const tracks = getTracks(totalRevolutions, baseRadius, trackSpacing, timeToDraw);
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      const finalTrack = tracks[tracks.length - 1];
-      if (!finalTrack) return;
-
-      // Draw clock ticks
-      if (tracks.length > 0) {
-        ctx.save();
-        ctx.strokeStyle = 'white';
-        ctx.lineCap = 'round';
-        const tickOuterRadius = (TICK_OUTER_DIA * screenDiameter) / 2;
-        const majorTickLength = MAJOR_TICK_LENGTH * screenDiameter;
-        const majorTickWidth = MAJOR_TICK_WIDTH * screenDiameter;
-        const minorTickLength = MINOR_TICK_LENGTH * screenDiameter;
-        const minorTickWidth = MINOR_TICK_WIDTH * screenDiameter;
-
-        for (let i = 0; i < 12; i++) {
-          const angle = i * (Math.PI / 6) - Math.PI / 2; // Start from top
-          const isMajor = i % 3 === 0;
-          const tickLength = isMajor ? majorTickLength : minorTickLength;
-          const startRadius = tickOuterRadius - tickLength;
-
-          const startX = centerX + startRadius * Math.cos(angle);
-          const startY = centerY + startRadius * Math.sin(angle);
-          const endX = centerX + tickOuterRadius * Math.cos(angle);
-          const endY = centerY + tickOuterRadius * Math.sin(angle);
-
-          let angleDiff = Math.abs(finalTrack.endAngle - angle);
-          if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-          const degreesDiff = (angleDiff * 180) / Math.PI;
-          const proximity = Math.max(0, 0.9 * (1 - degreesDiff / 35));
-
-          ctx.globalAlpha = proximity;
-          ctx.lineWidth = isMajor ? majorTickWidth : minorTickWidth;
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-
-      ctx.save();
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineCap = 'round';
-
-      // Draw faint tracks as complete circles
-      ctx.globalAlpha = 0.2;
-      {
-        const { thickness, radius } = finalTrack;
-        ctx.lineWidth = (TRACK_WIDTH * screenDiameter * thickness) / 2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Draw revolutions
-      ctx.globalAlpha = 1.0;
-      for (const { thickness, radius, endAngle } of tracks) {
-        ctx.lineWidth = TRACK_WIDTH * screenDiameter * thickness;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    },
-    [canvas],
-  );
+  const {drawClockFace, dimensions} = useDrawClockFace({ canvas });
 
   // Main animation loop
   useEffect(() => {
@@ -180,7 +73,7 @@ const SpiralTimer = () => {
       if (timerState.is === 'paused' && !highFrameRateOverride) {
         // Ensure we only perform the final draw once and then stop.
         if (animationFrameRef.current) {
-          drawSpiral(timerState.remainingTime);
+          drawClockFace(timerState.remainingTime);
           if (timeEl) timeEl.textContent = formatTime(timerState.remainingTime);
           cancelAnimationFrame(animationFrameRef.current);
           animationFrameRef.current = 0;
@@ -214,7 +107,7 @@ const SpiralTimer = () => {
         newDisplayTime = timerState.remainingTime;
       }
 
-      drawSpiral(newDisplayTime);
+      drawClockFace(newDisplayTime);
       if (timeEl) {
         timeEl.textContent = formatTime(newDisplayTime);
       }
@@ -232,7 +125,7 @@ const SpiralTimer = () => {
         animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, timerState, drawSpiral, windowSize, visible]);
+  }, [timeEl, timerState, drawClockFace, visible]);
 
   // Touch/mouse handling
   const getAngleFromPoint = (pos: { x: number; y: number }) => {
@@ -416,7 +309,7 @@ const SpiralTimer = () => {
     <div
       ref={setContainer}
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
-      style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
+      style={{ '--clock-diameter': `${dimensions?.innerRadius ?? 100 * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
       onDoubleClick={handleBackgroundDoubleClick}
     >
@@ -483,39 +376,3 @@ const SpiralTimer = () => {
 };
 
 export default SpiralTimer;
-
-const ceilMinutes = (duration: number, minutes: number = 1): number =>
-  Math.ceil(duration / minToMs(minutes)) * minToMs(minutes);
-
-type Track = {
-  rev: number;
-  thickness: number;
-  radius: number;
-  endAngle: number;
-};
-
-const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
-  const tracks: Track[] = [];
-  for (let rev = 0; rev < totalRevolutions; rev++) {
-    const thickness = (1 - rev / 12) ** 0.8;
-    const radius = baseRadius - rev ** 0.93 * radiusSpacing;
-    if (radius <= 0) continue;
-
-    const revolutionStart = rev * 60 * 60 * 1000;
-    const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
-
-    let revolutionTime: number;
-    if (timeToDraw >= revolutionEnd) {
-      revolutionTime = minToMs(60);
-    } else if (timeToDraw > revolutionStart) {
-      revolutionTime = timeToDraw - revolutionStart;
-    } else {
-      continue;
-    }
-
-    const endAngle = (revolutionTime / minToMs(60)) * 2 * Math.PI - Math.PI / 2;
-
-    tracks.push({ rev, thickness, radius, endAngle });
-  }
-  return tracks;
-};

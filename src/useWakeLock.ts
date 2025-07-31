@@ -13,8 +13,8 @@ export const useWakeLock = ({ enable }: WakeLockParams) => {
     try {
       wakeLockRef.current = await navigator.wakeLock.request('screen');
       console.debug('Screen wake lock acquired');
-    } catch (err) {
-      console.error('Failed to acquire wake lock:', err);
+    } catch (e) {
+      console.warn(`Failed to acquire wake lock: ${e}`);
     }
   }, []);
 
