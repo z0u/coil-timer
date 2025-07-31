@@ -106,7 +106,7 @@ const SpiralTimer = () => {
       // Draw clock ticks
       if (tracks.length > 0) {
         ctx.save();
-        ctx.strokeStyle = '#a1a1aa'; // zinc-400
+        ctx.strokeStyle = 'white';
         ctx.lineCap = 'round';
         const tickOuterRadius = (TICK_OUTER_DIA * screenDiameter) / 2;
         const majorTickLength = MAJOR_TICK_LENGTH * screenDiameter;
@@ -128,7 +128,7 @@ const SpiralTimer = () => {
           let angleDiff = Math.abs(finalTrack.endAngle - angle);
           if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
           const degreesDiff = (angleDiff * 180) / Math.PI;
-          const proximity = Math.max(0, 0.5 * (1 - degreesDiff / 35));
+          const proximity = Math.max(0, 0.9 * (1 - degreesDiff / 35));
 
           ctx.globalAlpha = proximity;
           ctx.lineWidth = isMajor ? majorTickWidth : minorTickWidth;
