@@ -23,6 +23,8 @@ export interface JogDialProps {
   onTap?: () => void;
   /** Distance threshold in pixels to distinguish tap from drag */
   dragTolerance?: number;
+  /** Child elements to render inside the button */
+  children?: React.ReactNode;
 }
 
 interface JogState {
@@ -44,6 +46,7 @@ export const JogDial: React.FC<JogDialProps> = ({
   onInteractionEnd,
   onTap,
   dragTolerance = TAP_DRAG_TOLERANCE,
+  children,
 }) => {
   const interactionRef = useRef<JogState | null>(null);
 
@@ -133,7 +136,9 @@ export const JogDial: React.FC<JogDialProps> = ({
       onPointerMove={handlePointerMove}
       onLostPointerCapture={handleLostPointerCapture}
       onClick={handleClick}
-    />
+    >
+      {children}
+    </button>
   );
 };
 

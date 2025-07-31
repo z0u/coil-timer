@@ -309,40 +309,40 @@ const SpiralTimer = () => {
         title="Timer control"
         className={clsx(
           'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-          'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+          'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+          'flex items-center justify-center',
+          'leading-none font-[Inconsolata,monospace] text-[calc(min(10vh,10vw))]',
+          'text-gray-300 text-shadow-lg/30',
+          'transition-opacity duration-500',
+          showControls ? 'opacity-100' : 'opacity-0',
         )}
         onInteractionStart={handleKnobInteractionStart}
         onInteractionMove={handleKnobInteractionMove}
         onInteractionEnd={handleKnobInteractionEnd}
         onTap={handleKnobTap}
-      />
-
-      <div
-        className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ease-in-out z-10 ${
-          showControls ? 'opacity-100' : 'opacity-0'
-        }`}
       >
-        <div className="absolute top-6 right-6 pointer-events-auto">
-          <button
-            aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
-            title="Fullscreen"
-            className="cursor-pointer text-gray-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFullscreen();
-            }}
-          >
-            <Scan size={24} />
-          </button>
-        </div>
+        <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
+        <span className="inline-block w-0 flex items-baseline">
+          <AnimatedColon isRunning={timerState.is === 'running'} />
+        </span>
+      </JogDial>
 
-        <div className="absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(10vh,10vw))] text-gray-300 text-shadow-lg/30 flex items-baseline leading-none font-[Inconsolata,monospace]">
-          <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
-          <span className="inline-block w-0 flex items-baseline">
-            <AnimatedColon isRunning={timerState.is === 'running'} />
-          </span>
-        </div>
-      </div>
+      <button
+        aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
+        title="Fullscreen"
+        className={clsx(
+          'absolute top-6 right-6 ',
+          'cursor-pointer text-gray-400',
+          'transition-opacity duration-500',
+          showControls ? 'opacity-100' : 'opacity-0',
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFullscreen();
+        }}
+      >
+        <Scan size={24} />
+      </button>
     </div>
   );
 };

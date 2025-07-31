@@ -18,7 +18,7 @@ export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
   }, [isRunning]);
 
   return (
-    <span className="relative h-[1em] mx-[0.1em] inline-block align-text-top" aria-hidden="true">
+    <span className="relative h-[1em] inline-block align-text-top" aria-hidden="true">
       <span className="opacity-1">:</span>
       <span
         className={clsx(
