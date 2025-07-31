@@ -317,25 +317,44 @@ const SpiralTimer = () => {
     interactionRef.current = null;
   };
 
+  // Click/double-click logic
+  const clickTimeoutRef = useRef<number | null>(null);
   const handleBackgroundClick = () => {
-    const newShowControls = !showControls;
-    setShowControls(newShowControls);
-    manualControlsOverride.current = newShowControls;
-
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-      controlsTimeoutRef.current = null;
+    // Delay single-click action to see if double-click occurs
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
     }
+    clickTimeoutRef.current = window.setTimeout(() => {
+      const newShowControls = !showControls;
+      setShowControls(newShowControls);
+      manualControlsOverride.current = newShowControls;
 
-    if (timerState.is === 'running' && newShowControls) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        // If we haven't manually hidden it again, auto-hide
-        if (manualControlsOverride.current) {
-          setShowControls(false);
-          manualControlsOverride.current = null;
-        }
-      }, OVERLAY_TIMEOUT);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+
+      if (timerState.is === 'running' && newShowControls) {
+        controlsTimeoutRef.current = setTimeout(() => {
+          // If we haven't manually hidden it again, auto-hide
+          if (manualControlsOverride.current) {
+            setShowControls(false);
+            manualControlsOverride.current = null;
+          }
+        }, OVERLAY_TIMEOUT);
+      }
+      clickTimeoutRef.current = null;
+    }, 250); // 250ms delay for double-click detection
+  };
+
+  const handleBackgroundDoubleClick = () => {
+    // Cancel pending single-click
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
     }
+    toggleFullscreen();
   };
 
   const toggleFullscreen = () => {
@@ -401,6 +420,7 @@ const SpiralTimer = () => {
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
+      onDoubleClick={handleBackgroundDoubleClick}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
