@@ -108,7 +108,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       ctx.lineCap = 'round';
 
       // Draw faint tracks as complete circles
-      ctx.globalAlpha = 0.2;
+      ctx.globalAlpha = 0.4;
       {
         const { thickness, radius } = finalTrack;
         ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * thickness;
@@ -152,6 +152,8 @@ type Track = {
   endAngle: number;
 };
 
+const EPSILON_T = 0.1;
+
 const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
   const tracks: Track[] = [];
   for (let rev = 0; rev < totalRevolutions; rev++) {
@@ -165,10 +167,10 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
       revolutionTime = minToMs(60);
-    } else if (timeToDraw > revolutionStart) {
+    } else if (timeToDraw > revolutionStart + EPSILON_T) {
       revolutionTime = timeToDraw - revolutionStart;
     } else {
-      continue;
+      revolutionTime = EPSILON_T; // tiny arc to draw a dot
     }
 
     const endAngle = (revolutionTime / minToMs(60)) * 2 * Math.PI - Math.PI / 2;
