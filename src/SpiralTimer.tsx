@@ -2,11 +2,11 @@ import clsx from 'clsx';
 import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
-import { min_to_ms, sec_to_ms } from './time-utils';
-import { usePersistentTimerState } from './use-persistent-timer-state';
-import { useVisibility } from './use-visibility';
-import { useWakeLock } from './use-wake-lock';
-import { useWindowSize } from './use-window-size';
+import { minToMs, secToMs } from './time-utils';
+import { usePersistentTimerState } from './usePersistentTimerState';
+import { useVisibility } from './useVisibility';
+import { useWakeLock } from './useWakeLock';
+import { useWindowSize } from './useWindowSize';
 
 // Interaction state (using useRef to avoid re-renders on every move)
 interface Interaction {
@@ -26,7 +26,7 @@ const MINOR_TICK_LENGTH = 0.008;
 const MINOR_TICK_WIDTH = 0.008;
 
 const TAP_DRAG_TOLERANCE = 12; // px
-const OVERLAY_TIMEOUT = sec_to_ms(5); // ms
+const OVERLAY_TIMEOUT = secToMs(5); // ms
 const RUNNING_FPS = 1;
 const MAX_FPS = 30;
 
@@ -278,7 +278,7 @@ const SpiralTimer = () => {
       if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
       if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
 
-      const deltaTime = (deltaAngle / (2 * Math.PI)) * min_to_ms(60);
+      const deltaTime = (deltaAngle / (2 * Math.PI)) * minToMs(60);
       const newDuration = Math.max(0, interaction.remainingTime + deltaTime);
 
       interaction.remainingTime = newDuration;
@@ -379,7 +379,7 @@ const SpiralTimer = () => {
     (e: WheelEvent) => {
       const delta = e.deltaY;
       // 1 minute per notch, invert for natural scroll
-      const change = delta > 0 ? min_to_ms(-0.5) : min_to_ms(0.5);
+      const change = delta > 0 ? minToMs(-0.5) : minToMs(0.5);
       if (timerState.is === 'paused') {
         const newTime = Math.max(0, timerState.remainingTime + change);
         setTimerState({ ...timerState, remainingTime: newTime });
@@ -485,7 +485,7 @@ const SpiralTimer = () => {
 export default SpiralTimer;
 
 const ceilMinutes = (duration: number, minutes: number = 1): number =>
-  Math.ceil(duration / min_to_ms(minutes)) * min_to_ms(minutes);
+  Math.ceil(duration / minToMs(minutes)) * minToMs(minutes);
 
 type Track = {
   rev: number;
@@ -506,14 +506,14 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
-      revolutionTime = min_to_ms(60);
+      revolutionTime = minToMs(60);
     } else if (timeToDraw > revolutionStart) {
       revolutionTime = timeToDraw - revolutionStart;
     } else {
       continue;
     }
 
-    const endAngle = (revolutionTime / min_to_ms(60)) * 2 * Math.PI - Math.PI / 2;
+    const endAngle = (revolutionTime / minToMs(60)) * 2 * Math.PI - Math.PI / 2;
 
     tracks.push({ rev, thickness, radius, endAngle });
   }

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
-import { sec_to_ms } from './time-utils';
+import { secToMs } from './time-utils';
 
 /** A `:` character that cycles through: none, top, both, bottom, none... */
 export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
@@ -13,7 +13,7 @@ export const AnimatedColon = ({ isRunning }: { isRunning: boolean }) => {
     }
     const interval = setInterval(() => {
       setState((s) => (s + 1) % 4);
-    }, sec_to_ms(0.5));
+    }, secToMs(0.5));
     return () => clearInterval(interval);
   }, [isRunning]);
 
