@@ -3,6 +3,7 @@ import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWakeLock } from './use-wake-lock';
 import { useWindowSize } from './use-window-size';
+import { useVisibility } from './use-visibility';
 
 // State definitions
 interface Running {
@@ -59,6 +60,7 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
 
   const windowSize = useWindowSize();
+  const visible = useVisibility();
   useWakeLock({ enable: timerState.is === 'running' });
 
   const animationFrameRef = useRef<number>(0);
@@ -251,7 +253,7 @@ const SpiralTimer = () => {
         animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, timerState, drawSpiral, windowSize]);
+  }, [timeEl, timerState, drawSpiral, windowSize, visible]);
 
   // Touch/mouse handling
   const getAngleFromPoint = (pos: { x: number; y: number }) => {
@@ -420,7 +422,7 @@ const SpiralTimer = () => {
           'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
           'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
           'cursor-pointer',
-          'touch-none',  // Prevent reload on drag on mobile
+          'touch-none', // Prevent reload on drag on mobile
         )}
         onMouseDown={(e) => {
           e.stopPropagation();
