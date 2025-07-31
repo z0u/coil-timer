@@ -432,7 +432,7 @@ const SpiralTimer = () => {
         }
         title="Timer control"
         className={clsx(
-          'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
+          'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
           'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
           'cursor-pointer',
           'touch-none', // Prevent reload on drag on mobile
@@ -490,7 +490,7 @@ const SpiralTimer = () => {
           </button>
         </div>
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(10vh,10vw))] text-gray-300 text-shadow-lg/30">
+        <div className="absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[calc(min(10vh,10vw))] text-gray-300 text-shadow-lg/30">
           <span ref={setTimeEl} className="font-[Inconsolata,monospace]" aria-live="polite" aria-atomic="true" />
           <span className="inline-block w-0">
             <AnimatedColon isRunning={timerState.is === 'running'} />
