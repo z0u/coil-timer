@@ -313,8 +313,6 @@ const SpiralTimer = () => {
     } else {
       setTimerState({ is: 'paused', remainingTime: newRemainingTime });
     }
-
-    interactionRef.current = null;
   };
 
   // Click/double-click logic
@@ -437,38 +435,21 @@ const SpiralTimer = () => {
           'cursor-pointer',
           'touch-none', // Prevent reload on drag on mobile
         )}
-        onMouseDown={(e) => {
+        onPointerDown={(e) => {
           e.stopPropagation();
           pointerDown({ x: e.clientX, y: e.clientY });
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
         }}
-        onMouseMove={(e) => {
+        onPointerMove={(e) => {
           e.stopPropagation();
           pointerMove({ x: e.clientX, y: e.clientY });
         }}
-        onMouseUp={(e) => {
+        onLostPointerCapture={(e) => {
           e.stopPropagation();
           pointerUp();
-        }}
-        onMouseLeave={(e) => {
-          e.stopPropagation();
-          pointerUp();
+          (e.target as HTMLElement).releasePointerCapture(e.pointerId);
         }}
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          pointerDown({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-        }}
-        onTouchMove={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          pointerMove({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-        }}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          pointerUp();
-        }}
       ></button>
 
       <div
