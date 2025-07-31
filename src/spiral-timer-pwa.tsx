@@ -37,6 +37,7 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   const windowSize = useWindowSize();
   const visible = useVisibility();
@@ -359,33 +360,48 @@ const SpiralTimer = () => {
   };
 
   // Wheel gesture handler for adding/subtracting time
-  const handleWheel = (e: React.WheelEvent<HTMLElement>) => {
-    e.preventDefault();
-    const delta = e.deltaY;
-    // 1 minute per notch, invert for natural scroll
-    const change = delta > 0 ? min_to_ms(-0.5) : min_to_ms(0.5);
-    if (timerState.is === 'paused') {
-      const newTime = Math.max(0, timerState.remainingTime + change);
-      setTimerState({ ...timerState, remainingTime: newTime });
-    } else if (timerState.is === 'running') {
-      const remaining = timerState.endTime - Date.now();
-      const newRemaining = Math.max(0, remaining + change);
-      if (newRemaining <= 0) {
-        setTimerState({ is: 'paused', remainingTime: 0 });
-      } else {
-        setTimerState({ is: 'running', endTime: Date.now() + newRemaining });
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      const delta = e.deltaY;
+      // 1 minute per notch, invert for natural scroll
+      const change = delta > 0 ? min_to_ms(-0.5) : min_to_ms(0.5);
+      if (timerState.is === 'paused') {
+        const newTime = Math.max(0, timerState.remainingTime + change);
+        setTimerState({ ...timerState, remainingTime: newTime });
+      } else if (timerState.is === 'running') {
+        const remaining = timerState.endTime - Date.now();
+        const newRemaining = Math.max(0, remaining + change);
+        if (newRemaining <= 0) {
+          setTimerState({ is: 'paused', remainingTime: 0 });
+        } else {
+          setTimerState({ is: 'running', endTime: Date.now() + newRemaining });
+        }
+      } else if (timerState.is === 'interacting') {
+        // Do nothing: already dragging
       }
-    } else if (timerState.is === 'interacting') {
-      // Do nothing: already dragging
-    }
-    lastInteractionTimeRef.current = Date.now();
-  };
+      lastInteractionTimeRef.current = Date.now();
+    },
+    [timerState],
+  );
+
+  // Attach non-passive wheel event listener to prevent scroll
+  useEffect(() => {
+    if (!container) return;
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      handleWheel(e);
+    };
+    container.addEventListener('wheel', wheelHandler, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', wheelHandler);
+    };
+  }, [handleWheel, container]);
 
   return (
     <div
+      ref={setContainer}
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
-      onWheel={handleWheel}
       onClick={handleBackgroundClick}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
