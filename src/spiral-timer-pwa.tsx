@@ -1,28 +1,23 @@
 import clsx from 'clsx';
 import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { z } from 'zod';
+import { useVisibility } from './use-visibility';
 import { useWakeLock } from './use-wake-lock';
 import { useWindowSize } from './use-window-size';
-import { useVisibility } from './use-visibility';
 
 // State definitions
-interface Running {
-  is: 'running';
-  endTime: number;
-}
+const TimerStateSchema = z.union([
+  z.object({ is: z.literal('running'), endTime: z.number() }),
+  z.object({ is: z.literal('paused'), remainingTime: z.number() }),
+  z.object({
+    is: z.literal('interacting'),
+    was: z.union([z.literal('running'), z.literal('paused')]),
+    remainingTime: z.number(),
+  }),
+]);
 
-interface Paused {
-  is: 'paused';
-  remainingTime: number;
-}
-
-interface Interacting {
-  is: 'interacting';
-  was: 'running' | 'paused';
-  remainingTime: number;
-}
-
-type TimerState = Running | Paused | Interacting;
+type TimerState = z.infer<typeof TimerStateSchema>;
 
 // Interaction state (using useRef to avoid re-renders on every move)
 interface Interaction {
@@ -50,10 +45,7 @@ const RUNNING_FPS = 1;
 const MAX_FPS = 30;
 
 const SpiralTimer = () => {
-  const [timerState, setTimerState] = useState<TimerState>({
-    is: 'paused',
-    remainingTime: min_to_ms(10),
-  });
+  const [timerState, setTimerState] = useState<TimerState>(getInitialTimerState());
 
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
@@ -71,6 +63,17 @@ const SpiralTimer = () => {
 
   const diameter = Math.min(windowSize.width, windowSize.height) * CLOCK_DIAMETER;
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
+
+  // Save timerState to localStorage on change
+  useEffect(() => {
+    if (timerState.is === 'interacting') return;
+
+    try {
+      localStorage.setItem('spiral-timer-state', JSON.stringify(timerState));
+    } catch (e) {
+      console.warn(`Count not save timer state to local storage: ${e}`);
+    }
+  }, [timerState]);
 
   // Show/hide controls based on timer state
   useEffect(() => {
@@ -523,4 +526,49 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
     tracks.push({ rev, thickness, radius, endAngle });
   }
   return tracks;
+};
+
+const DEFAULT_STATE: TimerState = { is: 'paused', remainingTime: min_to_ms(10) };
+
+const getInitialTimerState = (): TimerState => {
+  const state = loadTimerState();
+  return state || DEFAULT_STATE;
+};
+
+const loadTimerState = (): TimerState | null => {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem('spiral-timer-state');
+    if (!raw) return null;
+  } catch (e) {
+    console.warn(`Failed to get state: ${e}`);
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.info(`Failed to parse state: ${e}`);
+    return null;
+  }
+
+  const result = TimerStateSchema.safeParse(parsed);
+  if (!result.success) {
+    console.info('Invalid timer state format:', result.error);
+    return null;
+  }
+  const saved = result.data;
+
+  if (saved.is === 'running') {
+    const remaining = saved.endTime - Date.now();
+    if (remaining > 0) {
+      return { is: 'running', endTime: saved.endTime };
+    } else {
+      return { is: 'paused', remainingTime: 0 };
+    }
+  } else if (saved.is === 'paused') {
+    return { is: 'paused', remainingTime: saved.remainingTime };
+  }
+  return null;
 };

@@ -24,7 +24,8 @@
     "lucide-react": "^0.533.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "vite": "^7.0.6"
+    "vite": "^7.0.6",
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

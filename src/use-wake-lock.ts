@@ -12,7 +12,7 @@ export const useWakeLock = ({ enable }: WakeLockParams) => {
     if (!('wakeLock' in navigator)) return;
     try {
       wakeLockRef.current = await navigator.wakeLock.request('screen');
-      console.log('Screen wake lock acquired');
+      console.debug('Screen wake lock acquired');
     } catch (err) {
       console.error('Failed to acquire wake lock:', err);
     }
@@ -22,7 +22,7 @@ export const useWakeLock = ({ enable }: WakeLockParams) => {
   const releaseWakeLock = useCallback(() => {
     if (wakeLockRef.current) {
       wakeLockRef.current.release();
-      console.log('Screen wake lock released');
+      console.debug('Screen wake lock released');
       wakeLockRef.current = null;
     }
   }, []);
