@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Pause, Play, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import deepEqual from './deep-equal';
 import { useVisibility } from './use-visibility';
 import { useWakeLock } from './use-wake-lock';
 import { useWindowSize } from './use-window-size';
@@ -73,6 +74,19 @@ const SpiralTimer = () => {
     } catch (e) {
       console.warn(`Count not save timer state to local storage: ${e}`);
     }
+  }, [timerState]);
+
+  // Listen for localStorage changes from other tabs/windows
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (timerState.is === 'interacting' || e.key !== 'spiral-timer-state') return;
+      const state = loadTimerState();
+      if (state && !deepEqual(state, timerState)) {
+        setTimerState(state);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [timerState]);
 
   // Show/hide controls based on timer state
