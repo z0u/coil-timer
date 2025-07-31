@@ -65,14 +65,20 @@ const SpiralTimer = () => {
   const interactionRef = useRef<Interaction | null>(null);
   const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const manualControlsOverride = useRef<boolean | null>(null);
 
   const diameter = Math.min(windowSize.width, windowSize.height) * CLOCK_DIAMETER;
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
   // Show/hide controls based on timer state
   useEffect(() => {
+    manualControlsOverride.current = null; // Reset on state change
     if (timerState.is === 'running') {
-      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), OVERLAY_TIMEOUT);
+      controlsTimeoutRef.current = setTimeout(() => {
+        if (manualControlsOverride.current === null) {
+          setShowControls(false);
+        }
+      }, OVERLAY_TIMEOUT);
     } else {
       setShowControls(true);
     }
@@ -330,6 +336,27 @@ const SpiralTimer = () => {
     interactionRef.current = null;
   };
 
+  const handleBackgroundClick = () => {
+    const newShowControls = !showControls;
+    setShowControls(newShowControls);
+    manualControlsOverride.current = newShowControls;
+
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
+    }
+
+    if (timerState.is === 'running' && newShowControls) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        // If we haven't manually hidden it again, auto-hide
+        if (manualControlsOverride.current) {
+          setShowControls(false);
+          manualControlsOverride.current = null;
+        }
+      }, OVERLAY_TIMEOUT);
+    }
+  };
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen();
@@ -372,11 +399,13 @@ const SpiralTimer = () => {
     }
     lastInteractionTimeRef.current = Date.now();
   };
+
   return (
     <div
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${diameter}px` } as React.CSSProperties}
       onWheel={handleWheel}
+      onClick={handleBackgroundClick}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
@@ -391,20 +420,37 @@ const SpiralTimer = () => {
           'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
           'block w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
           'cursor-pointer',
+          'touch-none',  // Prevent reload on drag on mobile
         )}
-        onMouseDown={(e) => pointerDown({ x: e.clientX, y: e.clientY })}
-        onMouseMove={(e) => pointerMove({ x: e.clientX, y: e.clientY })}
-        onMouseUp={pointerUp}
-        onMouseLeave={pointerUp}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          pointerDown({ x: e.clientX, y: e.clientY });
+        }}
+        onMouseMove={(e) => {
+          e.stopPropagation();
+          pointerMove({ x: e.clientX, y: e.clientY });
+        }}
+        onMouseUp={(e) => {
+          e.stopPropagation();
+          pointerUp();
+        }}
+        onMouseLeave={(e) => {
+          e.stopPropagation();
+          pointerUp();
+        }}
+        onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => {
+          e.stopPropagation();
           e.preventDefault();
           pointerDown({ x: e.touches[0].clientX, y: e.touches[0].clientY });
         }}
         onTouchMove={(e) => {
+          e.stopPropagation();
           e.preventDefault();
           pointerMove({ x: e.touches[0].clientX, y: e.touches[0].clientY });
         }}
         onTouchEnd={(e) => {
+          e.stopPropagation();
           e.preventDefault();
           pointerUp();
         }}

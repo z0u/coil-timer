@@ -386,11 +386,3 @@
   /* Unrolled version uses less GPU (~80% less, 6% -> 1%) */
   animation: breathe-unrolled 120s step-end infinite;
 }
-
-/* Prevent pull-to-refresh/reload gesture on mobile browsers */
-.h-screen {
-  touch-action: none;
-}
-canvas {
-  touch-action: none;
-}
