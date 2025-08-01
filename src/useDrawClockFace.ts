@@ -86,7 +86,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
           const start = v.cartesian([], [startRadius, angle], center);
           const end = v.cartesian([], [tickOuterRadius, angle], center);
 
-          const angleDist = math.angleDist(finalTrack.endAngle, angle);
+          const angleDist = math.angleDist(finalTrack.angle, angle + math.HALF_PI);
           const proximity = Math.max(0, 0.9 * (1 - angleDist / math.rad(35)));
 
           ctx.globalAlpha = proximity;
@@ -101,6 +101,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
 
       ctx.save();
       ctx.strokeStyle = '#ef4444';
+      ctx.fillStyle = '#ef4444';
       ctx.lineCap = 'round';
 
       // Draw faint tracks as complete circles
@@ -115,11 +116,19 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
 
       // Draw revolutions
       ctx.globalAlpha = 1.0;
-      for (const { thickness, radius, endAngle } of tracks) {
-        ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * 2 * thickness;
+      for (const { thickness, radius, angle } of tracks) {
+        const lineWidth = TRACK_WIDTH * dimensions.screenRadius * 2 * thickness;
+        ctx.lineWidth = lineWidth;
         ctx.beginPath();
-        ctx.arc(center[0], center[1], radius, -math.HALF_PI, endAngle);
-        ctx.stroke();
+        if (angle > EPSILON) {
+          ctx.arc(center[0], center[1], radius, -math.HALF_PI, angle - math.HALF_PI);
+          ctx.stroke();
+        } else {
+          // Draw a dot at the top if the track is empty
+          const top = v.add2([], center, [0, -radius]);
+          ctx.arc(top[0], top[1], lineWidth / 2, 0, math.TAU);
+          ctx.fill();
+        }
       }
 
       ctx.restore();
@@ -145,10 +154,10 @@ type Track = {
   rev: number;
   thickness: number;
   radius: number;
-  endAngle: number;
+  angle: number;
 };
 
-const EPSILON_T = 0.1;
+const EPSILON = 0.001 * math.PI;
 
 const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
   const tracks: Track[] = [];
@@ -163,15 +172,15 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
       revolutionTime = 1 * Hour;
-    } else if (timeToDraw > revolutionStart + EPSILON_T) {
+    } else if (timeToDraw > revolutionStart) {
       revolutionTime = timeToDraw - revolutionStart;
     } else {
-      revolutionTime = EPSILON_T; // tiny arc to draw a dot
+      revolutionTime = 0;
     }
 
-    const endAngle = (revolutionTime / Hour) * math.TAU - math.HALF_PI;
+    const angle = (revolutionTime / Hour) * math.TAU;
 
-    tracks.push({ rev, thickness, radius, endAngle });
+    tracks.push({ rev, thickness, radius, angle });
   }
   return tracks;
 };
