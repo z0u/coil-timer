@@ -33,7 +33,6 @@ const SpiralTimer = () => {
   const visible = useVisibility();
   useWakeLock({ enable: timerState.is === 'running' });
 
-  const animationFrameRef = useRef<number>(0);
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
   const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
@@ -66,26 +65,10 @@ const SpiralTimer = () => {
   // Main animation loop
   useEffect(() => {
     let lastFrameTime = -Infinity;
-    const animate = (t: number) => {
-      const now = Date.now();
-      const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
-      const highFrameRateOverride = timeSinceLastInteraction < 5000;
+    let timeoutId: number | null = null;
+    let rafId: number | null = null;
 
-      // Throttle condition: running, but not interacting or in the grace period.
-      const fps =
-        timerState.is === 'interacting' || highFrameRateOverride
-          ? MAX_FPS
-          : timerState.is === 'running'
-            ? RUNNING_FPS
-            : PAUSED_FPS;
-
-      const frameInterval = (1 * Second) / fps;
-      if (t - lastFrameTime < frameInterval) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-        return; // Skip this frame.
-      }
-      lastFrameTime = t;
-
+    const runFrame = () => {
       let remainingTime: number;
       let endTime: number;
 
@@ -99,27 +82,63 @@ const SpiralTimer = () => {
           setTimerState({ is: 'paused', remainingTime: 0 });
           return; // State change will re-run the effect.
         }
-      } else {
-        // Paused, but still in the high-frame-rate grace period.
+      } else if (timerState.is === 'paused') {
         endTime = timerState.remainingTime + Date.now();
         remainingTime = timerState.remainingTime;
+      } else {
+        throw new Error(`Unknown state: ${timerState}`);
       }
 
       drawClockFace(remainingTime);
       if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
       if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
+    };
 
-      animationFrameRef.current = requestAnimationFrame(animate);
+    const scheduleNext = (fps: number) => {
+      if (fps >= 10) {
+        // High FPS: use requestAnimationFrame
+        rafId = requestAnimationFrame(loop);
+      } else {
+        // Low FPS: use setTimeout
+        timeoutId = window.setTimeout(() => loop(performance.now()), (1 * Second) / fps);
+      }
+    };
+
+    const loop = (t: number) => {
+      const now = Date.now();
+      const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
+      const highFrameRateOverride = timeSinceLastInteraction < 5000;
+
+      const fps =
+        timerState.is === 'interacting' || highFrameRateOverride
+          ? MAX_FPS
+          : timerState.is === 'running'
+            ? RUNNING_FPS
+            : PAUSED_FPS;
+
+      const frameInterval = (1 * Second) / fps;
+      if (t - lastFrameTime < frameInterval) {
+        scheduleNext(fps);
+        return;
+      }
+      lastFrameTime = t;
+
+      runFrame();
+      scheduleNext(fps);
     };
 
     // Start the animation loop.
-    animate(0);
+    loop(performance.now());
 
     // Cleanup function.
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = 0;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
       }
     };
   }, [timeEl, endTimeEl, timerState, drawClockFace, visible]);
