@@ -1,3 +1,5 @@
+import { wrapOnce } from '@thi.ng/math';
+import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { useRef } from 'react';
 
@@ -26,10 +28,10 @@ export interface JogDialProps {
 }
 
 interface JogState {
-  startPos: { x: number; y: number };
-  lastPos: { x: number; y: number };
+  startPos: v.Vec2Like;
+  lastPos: v.Vec2Like;
   wasDragged: boolean;
-  element: HTMLElement;
+  // element: HTMLElement;
 }
 
 const TAP_DRAG_TOLERANCE = 12; // px
@@ -49,14 +51,14 @@ export const JogDial: React.FC<JogDialProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    const pos = { x: e.clientX, y: e.clientY };
+    const pos: v.Vec2Like = [e.clientX, e.clientY];
     const element = e.target as HTMLElement;
 
     interactionRef.current = {
       startPos: pos,
       lastPos: pos,
       wasDragged: false,
-      element,
+      // element,
     };
 
     element.setPointerCapture(e.pointerId);
@@ -68,32 +70,18 @@ export const JogDial: React.FC<JogDialProps> = ({
     if (!interactionRef.current) return;
 
     const interaction = interactionRef.current;
-    const currentPos = { x: e.clientX, y: e.clientY };
+    const pos: v.Vec2Like = [e.clientX, e.clientY];
 
-    // Check if we've moved far enough to be considered a drag
-    const distFromStart = Math.sqrt(
-      (currentPos.x - interaction.startPos.x) ** 2 + (currentPos.y - interaction.startPos.y) ** 2,
-    );
-
-    if (!interaction.wasDragged && distFromStart > dragTolerance) {
+    if (!interaction.wasDragged && v.dist(pos, interaction.startPos) > dragTolerance) {
       interaction.wasDragged = true;
     }
 
     if (interaction.wasDragged) {
-      const lastAngle = getAngleFromPoint(interaction.lastPos, interaction.element);
-      const currentAngle = getAngleFromPoint(currentPos, interaction.element);
-      let deltaAngle = currentAngle - lastAngle;
-
-      // Handle angle wrapping
-      if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
-      if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
-
-      onJogMove?.({
-        deltaAngle,
-        wasDragged: interaction.wasDragged,
-      });
-
-      interaction.lastPos = currentPos;
+      const lastAngle = getAngleFromPoint(interaction.lastPos, e.target as HTMLElement);
+      const currentAngle = getAngleFromPoint(pos, e.target as HTMLElement);
+      const deltaAngle = wrapOnce(currentAngle - lastAngle, -Math.PI, Math.PI);
+      onJogMove?.({ deltaAngle, wasDragged: interaction.wasDragged });
+      interaction.lastPos = pos;
     }
   };
 
@@ -135,13 +123,9 @@ export const JogDial: React.FC<JogDialProps> = ({
   );
 };
 
-const getAngleFromPoint = (pos: { x: number; y: number }, element: HTMLElement) => {
+const getAngleFromPoint = (pos: v.Vec2Like, element: HTMLElement) => {
   const rect = element.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  const dx = pos.x - centerX;
-  const dy = pos.y - centerY;
-  let angle = Math.atan2(dy, dx) + Math.PI / 2;
-  if (angle < 0) angle += 2 * Math.PI;
-  return angle;
+  const center = [rect.left + rect.width / 2, rect.top + rect.height / 2];
+  const vec = v.sub2([], pos, center);
+  return v.heading(vec);
 };
