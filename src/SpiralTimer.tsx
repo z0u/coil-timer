@@ -9,6 +9,7 @@ import { TimerState } from './TimerState';
 import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
+import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
 
 // Interaction state for timer duration adjustments
@@ -33,26 +34,22 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [isTemporarilyUndimmed, setIsTemporarilyUndimmed] = useState(false);
+  const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
 
   useWakeLock({ enable: timerState.is === 'running' });
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
   const manualControlsOverride = useRef<boolean | null>(null);
-  const undimTimeoutRef = useRef<number | null>(null);
+  // const undimTimeoutRef = useRef<number | null>(null);
 
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
   // Show/hide controls based on timer state
   useEffect(() => {
     manualControlsOverride.current = null; // Reset on state change
-    // Clear temporary undimming when timer state changes
-    setIsTemporarilyUndimmed(false);
-    if (undimTimeoutRef.current) {
-      clearTimeout(undimTimeoutRef.current);
-      undimTimeoutRef.current = null;
-    }
+
+    setIsActive(false);
 
     if (timerState.is === 'running') {
       controlsTimeoutRef.current = setTimeout(() => {
@@ -161,16 +158,8 @@ const SpiralTimer = () => {
       setShowControls(newShowControls);
       manualControlsOverride.current = newShowControls;
 
-      // If showing controls while paused, temporarily undim the screen
       if (newShowControls && timerState.is === 'paused') {
-        setIsTemporarilyUndimmed(true);
-        if (undimTimeoutRef.current) {
-          clearTimeout(undimTimeoutRef.current);
-        }
-        // Auto-dim again after the overlay timeout
-        undimTimeoutRef.current = setTimeout(() => {
-          setIsTemporarilyUndimmed(false);
-        }, OVERLAY_TIMEOUT);
+        setIsActive(true);
       }
 
       if (controlsTimeoutRef.current) {
@@ -254,9 +243,7 @@ const SpiralTimer = () => {
         'text-white',
         'flex flex-col items-center justify-center',
         'transition-opacity',
-        timerState.is === 'paused' && !isTemporarilyUndimmed
-          ? 'opacity-30 delay-5000 duration-2000'
-          : 'opacity-100 duration-300',
+        timerState.is === 'paused' && !isActive ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-300',
       )}
       style={{ '--clock-diameter': `${(clockRadius ?? 100) * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
