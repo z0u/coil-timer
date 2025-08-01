@@ -4,13 +4,13 @@ import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
-import { formatDuration, formatTime, Hour, Hours, Minutes, Second, Seconds } from './time-utils';
+import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minutes, Second, Seconds } from './time-utils';
 import { TimerState } from './TimerState';
 import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
+import { useMultiClick } from './useMultiClick';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
-import { useTimeoutRef } from './useTimeoutRef';
 import { useWakeLock } from './useWakeLock';
 
 // Interaction state for timer duration adjustments
@@ -41,7 +41,6 @@ const SpiralTimer = () => {
   useWakeLock({ enable: timerState.is === 'running' });
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
-  const singleClickTimeout = useTimeoutRef();
 
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
@@ -126,19 +125,12 @@ const SpiralTimer = () => {
     }
   };
 
-  // Click/double-click logic
-  const handleBackgroundClick = () => {
-    setIsActive(true);
-    // Delay single-click action to see if double-click occurs
-    singleClickTimeout.set(() => {
-      setMustShowControls((value) => !value);
-    }, 250);
-  };
-
-  const handleBackgroundDoubleClick = () => {
-    singleClickTimeout.clear();
-    toggleFullscreen();
-  };
+  const handleBackgroundClicks = useMultiClick({
+    indeterminate: () => setIsActive(true),
+    single: () => setMustShowControls((value) => !value),
+    double: () => toggleFullscreen(),
+    interval: 250 * Milliseconds,
+  });
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
@@ -151,6 +143,7 @@ const SpiralTimer = () => {
   // Wheel gesture handler for adding/subtracting time
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      setIsActive(true);
       const delta = e.deltaY;
       // 1 minute per notch, invert for natural scroll
       const change = (delta > 0 ? -30 : 30) * Seconds;
@@ -199,8 +192,7 @@ const SpiralTimer = () => {
         timerState.is === 'paused' && !isActive ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-300',
       )}
       style={{ '--clock-diameter': `${(clockRadius ?? 100) * 2}px` } as React.CSSProperties}
-      onClick={handleBackgroundClick}
-      onDoubleClick={handleBackgroundDoubleClick}
+      onClick={handleBackgroundClicks}
     >
       <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
 
