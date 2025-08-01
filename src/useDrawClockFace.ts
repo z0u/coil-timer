@@ -78,7 +78,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
         const minorTickWidth = MINOR_TICK_WIDTH * dimensions.screenRadius * 2;
 
         for (let i = 0; i < 12; i++) {
-          const angle = i * (Math.PI / 6) - Math.PI / 2; // Start from top
+          const angle = (math.TAU / 12) * i - math.HALF_PI; // Start from top
           const isMajor = i % 3 === 0;
           const tickLength = isMajor ? majorTickLength : minorTickLength;
           const startRadius = tickOuterRadius - tickLength;
@@ -109,7 +109,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
         const { thickness, radius } = finalTrack;
         ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * thickness;
         ctx.beginPath();
-        ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
+        ctx.arc(center[0], center[1], radius, 0, math.TAU);
         ctx.stroke();
       }
 
@@ -118,7 +118,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       for (const { thickness, radius, endAngle } of tracks) {
         ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * 2 * thickness;
         ctx.beginPath();
-        ctx.arc(center[0], center[1], radius, -Math.PI / 2, endAngle);
+        ctx.arc(center[0], center[1], radius, -math.HALF_PI, endAngle);
         ctx.stroke();
       }
 
@@ -169,7 +169,7 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
       revolutionTime = EPSILON_T; // tiny arc to draw a dot
     }
 
-    const endAngle = (revolutionTime / minToMs(60)) * 2 * Math.PI - Math.PI / 2;
+    const endAngle = (revolutionTime / minToMs(60)) * math.TAU - math.HALF_PI;
 
     tracks.push({ rev, thickness, radius, endAngle });
   }

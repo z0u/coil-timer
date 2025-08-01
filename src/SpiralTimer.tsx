@@ -1,3 +1,4 @@
+import * as math from '@thi.ng/math';
 import clsx from 'clsx';
 import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -142,7 +143,7 @@ const SpiralTimer = () => {
   const handleJogMove = (event: JogEvent) => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
-    const deltaTime = (event.deltaAngle / (2 * Math.PI)) * minToMs(60);
+    const deltaTime = (event.deltaAngle / math.TAU) * minToMs(60);
     const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
     timerInteractionRef.current.remainingTime = newDuration;
     timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached

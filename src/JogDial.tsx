@@ -71,9 +71,12 @@ export const JogDial: React.FC<JogDialProps> = ({
     }
 
     if (interaction.wasDragged) {
-      const lastAngle = getAngleFromPoint(interaction.lastPos, e.target as HTMLElement);
-      const currentAngle = getAngleFromPoint(pos, e.target as HTMLElement);
-      const deltaAngle = math.wrapOnce(currentAngle - lastAngle, -Math.PI, Math.PI);
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const center = v.mixN2([], [rect.left, rect.top], [rect.right, rect.bottom], 0.5);
+      const lastVec = v.sub2([], interaction.lastPos, center);
+      const currentVec = v.sub2([], pos, center);
+      const deltaAngle = math.wrapOnce(v.heading(currentVec) - v.heading(lastVec), -Math.PI, Math.PI);
+
       onJogMove?.({ deltaAngle, wasDragged: interaction.wasDragged });
       interaction.lastPos = pos;
     }
@@ -110,11 +113,4 @@ export const JogDial: React.FC<JogDialProps> = ({
       {children}
     </button>
   );
-};
-
-const getAngleFromPoint = (pos: v.Vec2Like, element: HTMLElement) => {
-  const rect = element.getBoundingClientRect();
-  const center = [rect.left + rect.width / 2, rect.top + rect.height / 2];
-  const vec = v.sub2([], pos, center);
-  return v.heading(vec);
 };
