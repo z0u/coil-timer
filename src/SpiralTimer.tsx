@@ -4,7 +4,7 @@ import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
-import { Hour, Hours, Minutes, Second, Seconds } from './time-utils';
+import { formatDuration, formatTime, Hour, Hours, Minutes, Second, Seconds } from './time-utils';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
@@ -65,7 +65,7 @@ const SpiralTimer = () => {
 
   // Main animation loop
   useEffect(() => {
-    let lastFrameTime = 0;
+    let lastFrameTime = -Infinity;
     const animate = (t: number) => {
       const now = Date.now();
       const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
@@ -113,7 +113,7 @@ const SpiralTimer = () => {
     };
 
     // Start the animation loop.
-    animationFrameRef.current = requestAnimationFrame(animate);
+    animate(0);
 
     // Cleanup function.
     return () => {
@@ -218,24 +218,6 @@ const SpiralTimer = () => {
     } else {
       document.documentElement.requestFullscreen({ navigationUI: 'hide' });
     }
-  };
-
-  const formatDuration = (ms: number) => {
-    const totalSeconds = Math.ceil(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}`;
-  };
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
   };
 
   // Wheel gesture handler for adding/subtracting time
