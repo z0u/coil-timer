@@ -62,37 +62,37 @@ const SpiralTimer = () => {
 
   const { drawClockFace, clockRadius } = useDrawClockFace({ canvas });
 
+  const runFrame = useCallback(() => {
+    let remainingTime: number;
+    let endTime: number;
+
+    if (timerState.is === 'interacting') {
+      remainingTime = timerInteractionRef.current!.remainingTime;
+      endTime = remainingTime + Date.now();
+    } else if (timerState.is === 'running') {
+      endTime = timerState.endTime;
+      remainingTime = timerState.endTime - Date.now();
+      if (remainingTime <= 0) {
+        setTimerState({ is: 'paused', remainingTime: 0 });
+        return; // State change will re-run the effect.
+      }
+    } else if (timerState.is === 'paused') {
+      endTime = timerState.remainingTime + Date.now();
+      remainingTime = timerState.remainingTime;
+    } else {
+      throw new Error(`Unknown state: ${timerState}`);
+    }
+
+    drawClockFace(remainingTime);
+    if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
+    if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
+  }, [timeEl, endTimeEl, timerState, drawClockFace]);
+
   // Main animation loop
   useEffect(() => {
     let lastFrameTime = -Infinity;
     let timeoutId: number | null = null;
     let rafId: number | null = null;
-
-    const runFrame = () => {
-      let remainingTime: number;
-      let endTime: number;
-
-      if (timerState.is === 'interacting') {
-        remainingTime = timerInteractionRef.current!.remainingTime;
-        endTime = remainingTime + Date.now();
-      } else if (timerState.is === 'running') {
-        endTime = timerState.endTime;
-        remainingTime = timerState.endTime - Date.now();
-        if (remainingTime <= 0) {
-          setTimerState({ is: 'paused', remainingTime: 0 });
-          return; // State change will re-run the effect.
-        }
-      } else if (timerState.is === 'paused') {
-        endTime = timerState.remainingTime + Date.now();
-        remainingTime = timerState.remainingTime;
-      } else {
-        throw new Error(`Unknown state: ${timerState}`);
-      }
-
-      drawClockFace(remainingTime);
-      if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
-      if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-    };
 
     const scheduleNext = (fps: number) => {
       if (fps >= 10) {
@@ -141,7 +141,7 @@ const SpiralTimer = () => {
         timeoutId = null;
       }
     };
-  }, [timeEl, endTimeEl, timerState, drawClockFace, visible]);
+  }, [runFrame, timerState, drawClockFace, visible]);
 
   // JogDial interaction handlers
   const handleJogStart = () => {
