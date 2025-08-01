@@ -12,6 +12,7 @@ import { useMultiClick } from './useMultiClick';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
+import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 
 // Interaction state for timer duration adjustments
 interface TimerInteraction {
@@ -41,7 +42,6 @@ const SpiralTimer = () => {
   useWakeLock({ enable: timerState.is === 'running' });
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
-
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
   useEffect(() => {
@@ -143,6 +143,7 @@ const SpiralTimer = () => {
   // Wheel gesture handler for adding/subtracting time
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      e.preventDefault();
       setIsActive(true);
       const delta = e.deltaY;
       // 1 minute per notch, invert for natural scroll
@@ -165,19 +166,7 @@ const SpiralTimer = () => {
     },
     [timerState],
   );
-
-  // Attach non-passive wheel event listener to prevent scroll
-  useEffect(() => {
-    if (!container) return;
-    const wheelHandler = (e: WheelEvent) => {
-      e.preventDefault();
-      handleWheel(e);
-    };
-    container.addEventListener('wheel', wheelHandler, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', wheelHandler);
-    };
-  }, [handleWheel, container]);
+  useNonPassiveWheelHandler(container, handleWheel);
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
 
