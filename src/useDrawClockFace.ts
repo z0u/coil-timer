@@ -1,3 +1,5 @@
+import * as math from '@thi.ng/math';
+import * as v from '@thi.ng/vectors';
 import { useCallback, useEffect, useState } from 'react';
 import { minToMs } from './time-utils';
 
@@ -55,13 +57,11 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       ctx.clearRect(0, 0, width, height);
 
       const hours = timeToDraw / (60 * 60 * 1000);
-      // const screenDiameter = Math.min(width, height);
       const trackSpacing = dimensions.screenRadius * 2 * TRACK_SPACING;
       const totalRevolutions = Math.max(1, Math.ceil(hours));
       const tracks = getTracks(totalRevolutions, dimensions.innerRadius, trackSpacing, timeToDraw);
 
-      const centerX = width / 2;
-      const centerY = height / 2;
+      const center: v.Vec2Like = [width / 2, height / 2];
 
       const finalTrack = tracks[tracks.length - 1];
       if (!finalTrack) return;
@@ -83,21 +83,17 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
           const tickLength = isMajor ? majorTickLength : minorTickLength;
           const startRadius = tickOuterRadius - tickLength;
 
-          const startX = centerX + startRadius * Math.cos(angle);
-          const startY = centerY + startRadius * Math.sin(angle);
-          const endX = centerX + tickOuterRadius * Math.cos(angle);
-          const endY = centerY + tickOuterRadius * Math.sin(angle);
+          const start = v.cartesian([], [startRadius, angle], center);
+          const end = v.cartesian([], [tickOuterRadius, angle], center);
 
-          let angleDiff = Math.abs(finalTrack.endAngle - angle);
-          if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-          const degreesDiff = (angleDiff * 180) / Math.PI;
-          const proximity = Math.max(0, 0.9 * (1 - degreesDiff / 35));
+          const angleDist = math.angleDist(finalTrack.endAngle, angle);
+          const proximity = Math.max(0, 0.9 * (1 - angleDist / math.rad(35)));
 
           ctx.globalAlpha = proximity;
           ctx.lineWidth = isMajor ? majorTickWidth : minorTickWidth;
           ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
+          ctx.moveTo(start[0], start[1]);
+          ctx.lineTo(end[0], end[1]);
           ctx.stroke();
         }
         ctx.restore();
@@ -113,7 +109,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
         const { thickness, radius } = finalTrack;
         ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * thickness;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -122,7 +118,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       for (const { thickness, radius, endAngle } of tracks) {
         ctx.lineWidth = TRACK_WIDTH * dimensions.screenRadius * 2 * thickness;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
+        ctx.arc(center[0], center[1], radius, -Math.PI / 2, endAngle);
         ctx.stroke();
       }
 

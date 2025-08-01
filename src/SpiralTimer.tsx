@@ -279,7 +279,7 @@ const SpiralTimer = () => {
     <div
       ref={setContainer}
       className={clsx('h-screen overflow-hidden', 'bg-black text-white', 'flex flex-col items-center justify-center')}
-      style={{ '--clock-diameter': `${(dimensions?.innerRadius ?? 100) * 2}px` } as React.CSSProperties}
+      style={{ '--clock-diameter': `${(dimensions?.outerRadius ?? 100) * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
       onDoubleClick={handleBackgroundDoubleClick}
     >

@@ -1,4 +1,4 @@
-import { wrapOnce } from '@thi.ng/math';
+import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { useRef } from 'react';
@@ -31,7 +31,6 @@ interface JogState {
   startPos: v.Vec2Like;
   lastPos: v.Vec2Like;
   wasDragged: boolean;
-  // element: HTMLElement;
 }
 
 const TAP_DRAG_TOLERANCE = 12; // px
@@ -54,12 +53,7 @@ export const JogDial: React.FC<JogDialProps> = ({
     const pos: v.Vec2Like = [e.clientX, e.clientY];
     const element = e.target as HTMLElement;
 
-    interactionRef.current = {
-      startPos: pos,
-      lastPos: pos,
-      wasDragged: false,
-      // element,
-    };
+    interactionRef.current = { startPos: pos, lastPos: pos, wasDragged: false };
 
     element.setPointerCapture(e.pointerId);
     onJogStart?.();
@@ -79,7 +73,7 @@ export const JogDial: React.FC<JogDialProps> = ({
     if (interaction.wasDragged) {
       const lastAngle = getAngleFromPoint(interaction.lastPos, e.target as HTMLElement);
       const currentAngle = getAngleFromPoint(pos, e.target as HTMLElement);
-      const deltaAngle = wrapOnce(currentAngle - lastAngle, -Math.PI, Math.PI);
+      const deltaAngle = math.wrapOnce(currentAngle - lastAngle, -Math.PI, Math.PI);
       onJogMove?.({ deltaAngle, wasDragged: interaction.wasDragged });
       interaction.lastPos = pos;
     }
@@ -89,13 +83,8 @@ export const JogDial: React.FC<JogDialProps> = ({
     e.stopPropagation();
     if (!interactionRef.current) return;
 
-    const interaction = interactionRef.current;
-    const wasDragged = interaction.wasDragged;
-
-    onJogEnd?.({
-      deltaAngle: 0, // Not used in end callback
-      wasDragged,
-    });
+    const wasDragged = interactionRef.current.wasDragged;
+    onJogEnd?.({ deltaAngle: 0, wasDragged });
 
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     interactionRef.current = null;
