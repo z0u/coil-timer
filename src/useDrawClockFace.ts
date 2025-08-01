@@ -21,8 +21,14 @@ type UseDrawClockFaceProps = {
   canvas: HTMLCanvasElement | null;
 };
 
+type Dimensions = {
+  width: number;
+  height: number;
+  radius: number;
+};
+
 export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
-  const [screenRadius, setScreenRadius] = useState<number>(1);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
   useEffect(() => {
     if (!canvas) return;
@@ -30,7 +36,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
     const resizeObserver = new ResizeObserver(() => {
       const width = canvas.offsetWidth;
       const height = canvas.offsetHeight;
-      setScreenRadius(Math.min(width, height) / 2);
+      setDimensions({ width, height, radius: Math.min(width, height) / 2 });
     });
 
     resizeObserver.observe(canvas);
@@ -40,7 +46,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
   const drawClockFace = useCallback(
     (timeToDraw: number) => {
       const ctx = canvas?.getContext('2d');
-      if (!canvas || !ctx) return;
+      if (!canvas || !ctx || !dimensions) return;
 
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.offsetWidth;
@@ -64,17 +70,17 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       try {
         // Use relative coordinates
         ctx.translate(center[0], center[1]);
-        ctx.scale(screenRadius, screenRadius);
+        ctx.scale(dimensions.radius, dimensions.radius);
         drawClockTicks(ctx, finalTrack);
         drawRevolutions(ctx, tracks);
       } finally {
         ctx.restore();
       }
     },
-    [canvas, screenRadius],
+    [canvas, dimensions],
   );
 
-  return { drawClockFace, clockRadius: screenRadius * TICK_OUTER_DIA };
+  return { drawClockFace, clockRadius: (dimensions?.radius ?? 1) * TICK_OUTER_DIA };
 };
 
 type Track = {

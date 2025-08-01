@@ -18,6 +18,7 @@ interface TimerInteraction {
 
 const OVERLAY_TIMEOUT = 5 * Second;
 const RUNNING_FPS = 1;
+const PAUSED_FPS = 1 / 30; // Twice per minute
 const MAX_FPS = 30;
 
 const SpiralTimer = () => {
@@ -70,20 +71,13 @@ const SpiralTimer = () => {
       const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
       const highFrameRateOverride = timeSinceLastInteraction < 5000;
 
-      // Stop condition: paused and the 5s grace period is over.
-      if (timerState.is === 'paused' && !highFrameRateOverride) {
-        // Ensure we only perform the final draw once and then stop.
-        if (animationFrameRef.current) {
-          drawClockFace(timerState.remainingTime);
-          if (timeEl) timeEl.textContent = formatDuration(timerState.remainingTime);
-          cancelAnimationFrame(animationFrameRef.current);
-          animationFrameRef.current = 0;
-        }
-        return;
-      }
-
       // Throttle condition: running, but not interacting or in the grace period.
-      const fps = timerState.is === 'interacting' || highFrameRateOverride ? MAX_FPS : RUNNING_FPS;
+      const fps =
+        timerState.is === 'interacting' || highFrameRateOverride
+          ? MAX_FPS
+          : timerState.is === 'running'
+            ? RUNNING_FPS
+            : PAUSED_FPS;
 
       const frameInterval = (1 * Second) / fps;
       if (t - lastFrameTime < frameInterval) {
