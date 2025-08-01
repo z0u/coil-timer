@@ -384,7 +384,7 @@
   /* animation: breathe 120s ease infinite; */
 
   /* Unrolled version uses less GPU (~80% less, 6% -> 1%) */
-  animation: breathe-unrolled 120s step-end infinite;
+  animation: breathe-unrolled 300s step-end infinite;
 }
 
 @keyframes colon-dot {
