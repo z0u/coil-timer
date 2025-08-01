@@ -4,7 +4,7 @@ import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
-import { Hour, Minutes, Second, Seconds } from './time-utils';
+import { Hour, Hours, Minutes, Second, Seconds } from './time-utils';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
@@ -144,7 +144,7 @@ const SpiralTimer = () => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
     const deltaTime = (event.deltaAngle / math.TAU) * 1 * Hour;
-    const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
+    const newDuration = math.clamp(timerInteractionRef.current.remainingTime + deltaTime, 0, 24 * Hours);
     timerInteractionRef.current.remainingTime = newDuration;
     timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached
   };

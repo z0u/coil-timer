@@ -91,7 +91,7 @@ const EPSILON = 0.001 * math.PI;
 const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
   const tracks: Track[] = [];
   for (let rev = 0; rev < totalRevolutions; rev++) {
-    const thickness = (1 - rev / 12) ** 0.8;
+    const thickness = (1 - rev / 24) ** 0.8;
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
