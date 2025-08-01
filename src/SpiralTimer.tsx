@@ -5,9 +5,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
 import { formatDuration, formatTime, Hour, Hours, Minutes, Second, Seconds } from './time-utils';
+import { TimerState } from './TimerState';
+import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
-import { useVisibility } from './useVisibility';
 import { useWakeLock } from './useWakeLock';
 
 // Interaction state for timer duration adjustments
@@ -17,9 +18,12 @@ interface TimerInteraction {
 }
 
 const OVERLAY_TIMEOUT = 5 * Second;
-const RUNNING_FPS = 1;
-const PAUSED_FPS = 1 / 30; // Twice per minute
-const MAX_FPS = 30;
+
+const FPS: Record<TimerState['is'], number> = {
+  interacting: 30,
+  running: 1,
+  paused: 1 / 30, // Twice per minute
+};
 
 const SpiralTimer = () => {
   const [timerState, setTimerState] = usePersistentTimerState();
@@ -30,11 +34,9 @@ const SpiralTimer = () => {
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
-  const visible = useVisibility();
   useWakeLock({ enable: timerState.is === 'running' });
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
-  const lastInteractionTimeRef = useRef<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
   const manualControlsOverride = useRef<boolean | null>(null);
 
@@ -88,60 +90,7 @@ const SpiralTimer = () => {
     if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
   }, [timeEl, endTimeEl, timerState, drawClockFace]);
 
-  // Main animation loop
-  useEffect(() => {
-    let lastFrameTime = -Infinity;
-    let timeoutId: number | null = null;
-    let rafId: number | null = null;
-
-    const scheduleNext = (fps: number) => {
-      if (fps >= 10) {
-        // High FPS: use requestAnimationFrame
-        rafId = requestAnimationFrame(loop);
-      } else {
-        // Low FPS: use setTimeout
-        timeoutId = window.setTimeout(() => loop(performance.now()), (1 * Second) / fps);
-      }
-    };
-
-    const loop = (t: number) => {
-      const now = Date.now();
-      const timeSinceLastInteraction = now - lastInteractionTimeRef.current;
-      const highFrameRateOverride = timeSinceLastInteraction < 5000;
-
-      const fps =
-        timerState.is === 'interacting' || highFrameRateOverride
-          ? MAX_FPS
-          : timerState.is === 'running'
-            ? RUNNING_FPS
-            : PAUSED_FPS;
-
-      const frameInterval = (1 * Second) / fps;
-      if (t - lastFrameTime < frameInterval) {
-        scheduleNext(fps);
-        return;
-      }
-      lastFrameTime = t;
-
-      runFrame();
-      scheduleNext(fps);
-    };
-
-    // Start the animation loop.
-    loop(performance.now());
-
-    // Cleanup function.
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    };
-  }, [runFrame, timerState, drawClockFace, visible]);
+  useAnimation({ runFrame, fps: FPS[timerState.is] });
 
   // JogDial interaction handlers
   const handleJogStart = () => {
@@ -163,7 +112,6 @@ const SpiralTimer = () => {
 
   const handleJogEnd = (event: JogEvent) => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
-    lastInteractionTimeRef.current = Date.now();
 
     const { remainingTime } = timerInteractionRef.current;
     let nextState: 'running' | 'paused';
@@ -258,8 +206,8 @@ const SpiralTimer = () => {
         }
       } else if (timerState.is === 'interacting') {
         // Do nothing: already dragging
+        setTimerState({ ...timerState });
       }
-      lastInteractionTimeRef.current = Date.now();
     },
     [timerState],
   );
