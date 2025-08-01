@@ -53,7 +53,7 @@ const SpiralTimer = () => {
       clearTimeout(undimTimeoutRef.current);
       undimTimeoutRef.current = null;
     }
-    
+
     if (timerState.is === 'running') {
       controlsTimeoutRef.current = setTimeout(() => {
         if (manualControlsOverride.current === null) {
@@ -254,7 +254,9 @@ const SpiralTimer = () => {
         'text-white',
         'flex flex-col items-center justify-center',
         'transition-opacity',
-        timerState.is === 'paused' && !isTemporarilyUndimmed ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-300',
+        timerState.is === 'paused' && !isTemporarilyUndimmed
+          ? 'opacity-30 delay-5000 duration-2000'
+          : 'opacity-100 duration-300',
       )}
       style={{ '--clock-diameter': `${(clockRadius ?? 100) * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClick}
