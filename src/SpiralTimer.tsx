@@ -10,6 +10,7 @@ import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
+import { useTimeoutRef } from './useTimeoutRef';
 import { useWakeLock } from './useWakeLock';
 
 // Interaction state for timer duration adjustments
@@ -29,43 +30,23 @@ const FPS: Record<TimerState['is'], number> = {
 const SpiralTimer = () => {
   const [timerState, setTimerState] = usePersistentTimerState();
 
-  const [showControls, setShowControls] = useState(true);
+  // const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
+  const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
 
   useWakeLock({ enable: timerState.is === 'running' });
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
-  const controlsTimeoutRef = useRef<number | null>(null);
-  const manualControlsOverride = useRef<boolean | null>(null);
-  // const undimTimeoutRef = useRef<number | null>(null);
+  const singleClickTimeout = useTimeoutRef();
 
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
-  // Show/hide controls based on timer state
   useEffect(() => {
-    manualControlsOverride.current = null; // Reset on state change
-
-    setIsActive(false);
-
-    if (timerState.is === 'running') {
-      controlsTimeoutRef.current = setTimeout(() => {
-        if (manualControlsOverride.current === null) {
-          setShowControls(false);
-        }
-      }, OVERLAY_TIMEOUT);
-    } else {
-      setShowControls(true);
-    }
-
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
+    setMustShowControls(true);
   }, [timerState.is]);
 
   const { drawClockFace, clockRadius } = useDrawClockFace({ canvas });
@@ -146,46 +127,16 @@ const SpiralTimer = () => {
   };
 
   // Click/double-click logic
-  const clickTimeoutRef = useRef<number | null>(null);
   const handleBackgroundClick = () => {
+    setIsActive(true);
     // Delay single-click action to see if double-click occurs
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-    clickTimeoutRef.current = window.setTimeout(() => {
-      const newShowControls = !showControls;
-      setShowControls(newShowControls);
-      manualControlsOverride.current = newShowControls;
-
-      if (newShowControls && timerState.is === 'paused') {
-        setIsActive(true);
-      }
-
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-        controlsTimeoutRef.current = null;
-      }
-
-      if (timerState.is === 'running' && newShowControls) {
-        controlsTimeoutRef.current = setTimeout(() => {
-          // If we haven't manually hidden it again, auto-hide
-          if (manualControlsOverride.current) {
-            setShowControls(false);
-            manualControlsOverride.current = null;
-          }
-        }, OVERLAY_TIMEOUT);
-      }
-      clickTimeoutRef.current = null;
-    }, 250); // 250ms delay for double-click detection
+    singleClickTimeout.set(() => {
+      setMustShowControls((value) => !value);
+    }, 250);
   };
 
   const handleBackgroundDoubleClick = () => {
-    // Cancel pending single-click
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
+    singleClickTimeout.clear();
     toggleFullscreen();
   };
 
@@ -235,6 +186,8 @@ const SpiralTimer = () => {
     };
   }, [handleWheel, container]);
 
+  const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
+
   return (
     <div
       ref={setContainer}
@@ -265,7 +218,7 @@ const SpiralTimer = () => {
           'leading-none font-[Inconsolata,monospace] ',
           'text-gray-300 text-shadow-lg/30',
           'transition-opacity duration-500',
-          showControls ? 'opacity-100' : 'opacity-0',
+          controlsAreVisible ? 'opacity-100' : 'opacity-0',
         )}
         onJogStart={handleJogStart}
         onJogMove={handleJogMove}
@@ -298,7 +251,7 @@ const SpiralTimer = () => {
           'absolute top-6 right-6 ',
           'cursor-pointer text-gray-400',
           'transition-opacity duration-500',
-          showControls ? 'opacity-100' : 'opacity-0',
+          controlsAreVisible ? 'opacity-100' : 'opacity-0',
         )}
         onClick={(e) => {
           e.stopPropagation();
