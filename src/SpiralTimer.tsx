@@ -271,13 +271,9 @@ const SpiralTimer = () => {
           <span
             ref={setEndTimeEl}
             className={clsx(
-              'relative',
-              'before:absolute before:block before:left-0',
-              'before:transform before:-translate-x-[100%] before:px-[1ex]',
-              'before:content-["⇥"]',
               'text-gray-400 before:text-gray-600',
               'transition-opacity duration-500 delay-2000',
-              // timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
+              timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
             )}
           >
             --
