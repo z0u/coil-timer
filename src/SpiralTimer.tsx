@@ -26,6 +26,7 @@ const SpiralTimer = () => {
   const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
+  const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   const visible = useVisibility();
@@ -74,7 +75,7 @@ const SpiralTimer = () => {
         // Ensure we only perform the final draw once and then stop.
         if (animationFrameRef.current) {
           drawClockFace(timerState.remainingTime);
-          if (timeEl) timeEl.textContent = formatTime(timerState.remainingTime);
+          if (timeEl) timeEl.textContent = formatDuration(timerState.remainingTime);
           cancelAnimationFrame(animationFrameRef.current);
           animationFrameRef.current = 0;
         }
@@ -84,37 +85,35 @@ const SpiralTimer = () => {
       // Throttle condition: running, but not interacting or in the grace period.
       const fps = timerState.is === 'interacting' || highFrameRateOverride ? MAX_FPS : RUNNING_FPS;
 
-      const frameInterval = 1000 / fps;
+      const frameInterval = (1 * Second) / fps;
       if (t - lastFrameTime < frameInterval) {
         animationFrameRef.current = requestAnimationFrame(animate);
         return; // Skip this frame.
       }
       lastFrameTime = t;
 
-      let dialTime: number;
-      let numericTime: number;
+      let remainingTime: number;
+      let endTime: number;
 
       if (timerState.is === 'interacting') {
-        dialTime = timerInteractionRef.current!.remainingTime;
-        if (timerInteractionRef.current!.hasChanged) {
-          numericTime = math.roundTo(dialTime, Minutes);
-        } else {
-          numericTime = dialTime;
-        }
+        remainingTime = timerInteractionRef.current!.remainingTime;
+        endTime = remainingTime + Date.now();
       } else if (timerState.is === 'running') {
-        const remaining = timerState.endTime - Date.now();
-        if (remaining <= 0) {
+        endTime = timerState.endTime;
+        remainingTime = timerState.endTime - Date.now();
+        if (remainingTime <= 0) {
           setTimerState({ is: 'paused', remainingTime: 0 });
           return; // State change will re-run the effect.
         }
-        dialTime = numericTime = remaining;
       } else {
         // Paused, but still in the high-frame-rate grace period.
-        dialTime = numericTime = timerState.remainingTime;
+        endTime = timerState.remainingTime + Date.now();
+        remainingTime = timerState.remainingTime;
       }
 
-      drawClockFace(dialTime);
-      if (timeEl) timeEl.textContent = formatTime(math.roundTo(numericTime, Minutes));
+      drawClockFace(remainingTime);
+      if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
+      if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };
@@ -129,7 +128,7 @@ const SpiralTimer = () => {
         animationFrameRef.current = 0;
       }
     };
-  }, [timeEl, timerState, drawClockFace, visible]);
+  }, [timeEl, endTimeEl, timerState, drawClockFace, visible]);
 
   // JogDial interaction handlers
   const handleJogStart = () => {
@@ -227,7 +226,7 @@ const SpiralTimer = () => {
     }
   };
 
-  const formatTime = (ms: number) => {
+  const formatDuration = (ms: number) => {
     const totalSeconds = Math.ceil(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -236,6 +235,13 @@ const SpiralTimer = () => {
       return `${hours}:${minutes.toString().padStart(2, '0')}`;
     }
     return `${minutes}`;
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   // Wheel gesture handler for adding/subtracting time
@@ -296,8 +302,8 @@ const SpiralTimer = () => {
         className={clsx(
           'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
           'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
-          'flex items-center justify-center',
-          'leading-none font-[Inconsolata,monospace] text-[calc(min(10vh,10vw))]',
+          'flex-col items-center justify-center',
+          'leading-none font-[Inconsolata,monospace] ',
           'text-gray-300 text-shadow-lg/30',
           'transition-opacity duration-500',
           showControls ? 'opacity-100' : 'opacity-0',
@@ -306,9 +312,27 @@ const SpiralTimer = () => {
         onJogMove={handleJogMove}
         onJogEnd={handleJogEnd}
       >
-        <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
-        <span className="inline-block w-0 flex items-baseline">
-          <AnimatedColon isRunning={timerState.is === 'running'} />
+        <span className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
+          <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
+          <span className="inline-block w-0 flex items-baseline">
+            <AnimatedColon isRunning={timerState.is === 'running'} />
+          </span>
+        </span>
+        <span className="block h-0 text-[calc(min(5vh,5vw))]">
+          <span
+            ref={setEndTimeEl}
+            className={clsx(
+              'relative',
+              'before:absolute before:block before:left-0',
+              'before:transform before:-translate-x-[100%] before:px-[1ex]',
+              'before:content-["⇥"]',
+              'text-gray-400 before:text-gray-600',
+              'transition-opacity duration-500 delay-2000',
+              // timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
+            )}
+          >
+            --
+          </span>
         </span>
       </JogDial>
 
