@@ -1,7 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import { useCallback, useEffect, useState } from 'react';
-import { minToMs } from './time-utils';
+import { Hour } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -162,14 +162,14 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
-      revolutionTime = minToMs(60);
+      revolutionTime = 1 * Hour;
     } else if (timeToDraw > revolutionStart + EPSILON_T) {
       revolutionTime = timeToDraw - revolutionStart;
     } else {
       revolutionTime = EPSILON_T; // tiny arc to draw a dot
     }
 
-    const endAngle = (revolutionTime / minToMs(60)) * math.TAU - math.HALF_PI;
+    const endAngle = (revolutionTime / Hour) * math.TAU - math.HALF_PI;
 
     tracks.push({ rev, thickness, radius, endAngle });
   }

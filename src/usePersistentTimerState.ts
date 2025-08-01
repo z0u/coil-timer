@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import deepEqual from './deep-equal';
-import { minToMs } from './time-utils';
+import { Minutes } from './time-utils';
 import { TimerState, TimerStateSchema } from './TimerState';
 
 const STORAGE_KEY = 'spiral-timer-state';
 
 const DEFAULT_STATE: TimerState = {
   is: 'paused',
-  remainingTime: minToMs(10),
+  remainingTime: 10 * Minutes,
 };
 
 const loadTimerState = (): TimerState | null => {

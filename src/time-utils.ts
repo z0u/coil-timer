@@ -1,9 +1,8 @@
-import * as math from '@thi.ng/math';
-
-export const secToMs = (s: number): number => s * 1000;
-export const minToMs = (m: number): number => secToMs(m * 60);
-
-export const ceilMinutes = (duration: number, minutes: number = 1): number =>
-  Math.ceil(duration / minToMs(minutes)) * minToMs(minutes);
-
-export const roundMinutes = (duration: number, minutes: number = 1): number => math.roundTo(duration, minToMs(minutes));
+export const Millisecond = 1;
+export const Milliseconds = 1;
+export const Second = 1000 * Milliseconds;
+export const Seconds = 1000 * Milliseconds;
+export const Minute = 60 * Seconds;
+export const Minutes = 60 * Seconds;
+export const Hour = 60 * Minutes;
+export const Hours = 60 * Minutes;

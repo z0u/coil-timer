@@ -4,7 +4,7 @@ import { Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
-import { minToMs, roundMinutes, secToMs } from './time-utils';
+import { Hour, Minutes, Second, Seconds } from './time-utils';
 import { useDrawClockFace } from './useDrawClockFace';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useVisibility } from './useVisibility';
@@ -16,7 +16,7 @@ interface TimerInteraction {
   hasChanged: boolean;
 }
 
-const OVERLAY_TIMEOUT = secToMs(5); // ms
+const OVERLAY_TIMEOUT = 5 * Second;
 const RUNNING_FPS = 1;
 const MAX_FPS = 30;
 
@@ -97,7 +97,7 @@ const SpiralTimer = () => {
       if (timerState.is === 'interacting') {
         dialTime = timerInteractionRef.current!.remainingTime;
         if (timerInteractionRef.current!.hasChanged) {
-          numericTime = roundMinutes(dialTime);
+          numericTime = math.roundTo(dialTime, Minutes);
         } else {
           numericTime = dialTime;
         }
@@ -114,7 +114,7 @@ const SpiralTimer = () => {
       }
 
       drawClockFace(dialTime);
-      if (timeEl) timeEl.textContent = formatTime(roundMinutes(numericTime));
+      if (timeEl) timeEl.textContent = formatTime(math.roundTo(numericTime, Minutes));
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };
@@ -143,7 +143,7 @@ const SpiralTimer = () => {
   const handleJogMove = (event: JogEvent) => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
-    const deltaTime = (event.deltaAngle / math.TAU) * minToMs(60);
+    const deltaTime = (event.deltaAngle / math.TAU) * 1 * Hour;
     const newDuration = Math.max(0, timerInteractionRef.current.remainingTime + deltaTime);
     timerInteractionRef.current.remainingTime = newDuration;
     timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached
@@ -160,7 +160,7 @@ const SpiralTimer = () => {
     if (event.wasDragged) {
       // If dragged, round to the nearest minute and resume previous state
       nextState = timerState.was;
-      newRemainingTime = roundMinutes(remainingTime);
+      newRemainingTime = math.roundTo(remainingTime, Minutes);
     } else {
       // If tapped, toggle between running and paused
       nextState = timerState.was === 'running' ? 'paused' : 'running';
@@ -243,7 +243,7 @@ const SpiralTimer = () => {
     (e: WheelEvent) => {
       const delta = e.deltaY;
       // 1 minute per notch, invert for natural scroll
-      const change = delta > 0 ? minToMs(-0.5) : minToMs(0.5);
+      const change = (delta > 0 ? -30 : 30) * Seconds;
       if (timerState.is === 'paused') {
         const newTime = Math.max(0, timerState.remainingTime + change);
         setTimerState({ ...timerState, remainingTime: newTime });
