@@ -1,7 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import { useCallback, useEffect, useState } from 'react';
-import { Hour } from './time-utils';
+import { Hours } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -55,9 +55,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
 
       ctx.clearRect(0, 0, width, height);
 
-      const hours = timeToDraw / (60 * 60 * 1000);
-      const totalRevolutions = Math.max(1, Math.ceil(hours));
-      const tracks = getTracks(totalRevolutions, CLOCK_DIAMETER, TRACK_SPACING, timeToDraw);
+      const tracks = getTracks(timeToDraw, CLOCK_DIAMETER, TRACK_SPACING, Hours);
       const finalTrack = tracks[tracks.length - 1];
       if (!finalTrack) return;
       const center: v.Vec2Like = [width / 2, height / 2];
@@ -68,7 +66,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
         ctx.translate(center[0], center[1]);
         ctx.scale(screenRadius, screenRadius);
         drawClockTicks(ctx, finalTrack);
-        drawRevolutions(ctx, finalTrack, tracks);
+        drawRevolutions(ctx, tracks);
       } finally {
         ctx.restore();
       }
@@ -84,14 +82,24 @@ type Track = {
   thickness: number;
   radius: number;
   angle: number;
+  distFromStart: number; // negative for current track
+  distFromEnd: number; // negative for current track
 };
 
 const EPSILON = 0.001 * math.PI;
 
-const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: number, timeToDraw: number) => {
+const getTracks = (
+  timeToDraw: number,
+  baseRadius: number,
+  radiusSpacing: number,
+  /** The length of each track, e.g. "one hour" */
+  trackLength: number,
+) => {
+  const totalRevolutions = Math.ceil(Math.max(1, timeToDraw / trackLength));
+
   const tracks: Track[] = [];
   for (let rev = 0; rev < totalRevolutions; rev++) {
-    const thickness = (1 - rev / 24) ** 0.8;
+    const thickness = (1 - rev / 24) ** 0.5;
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
@@ -100,21 +108,32 @@ const getTracks = (totalRevolutions: number, baseRadius: number, radiusSpacing: 
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
-      revolutionTime = 1 * Hour;
+      // Future track (full circle)
+      revolutionTime = trackLength;
     } else if (timeToDraw > revolutionStart) {
+      // Current track (partial circle)
       revolutionTime = timeToDraw - revolutionStart;
     } else {
+      // Completed track (empty circle)
       revolutionTime = 0;
     }
 
-    const angle = (revolutionTime / Hour) * math.TAU;
+    const angle = (revolutionTime / trackLength) * math.TAU;
 
-    tracks.push({ rev, thickness, radius, angle });
+    const distFromStart = (revolutionStart - timeToDraw) / trackLength;
+    const distFromEnd = (timeToDraw - revolutionEnd) / trackLength;
+
+    tracks.push({ rev, thickness, radius, angle, distFromStart, distFromEnd });
   }
   return tracks;
 };
 
-const drawRevolutions = (ctx: CanvasRenderingContext2D, finalTrack: Track, tracks: Track[]) => {
+const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[]) => {
+  const finalTrack = tracks[tracks.length - 1];
+  if (!finalTrack) return;
+
+  // console.log(finalTrack.dt);
+
   ctx.save();
   try {
     ctx.strokeStyle = '#ef4444';
@@ -122,9 +141,11 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, finalTrack: Track, track
     ctx.lineCap = 'round';
 
     // Draw faint tracks as complete circles
-    ctx.globalAlpha = 0.4;
     {
-      const { thickness, radius } = finalTrack;
+      ctx.globalAlpha = 0.4;
+      const { thickness, radius, distFromStart } = finalTrack;
+      const frac = math.clamp(unmix(0, 1 / 60, -distFromStart), 0, 1);
+      ctx.globalAlpha = tracks.length > 1 ? math.mix(0, 0.3, frac) : 0.3;
       ctx.lineWidth = (TRACK_WIDTH * thickness) / 2;
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, math.TAU);
@@ -132,10 +153,14 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, finalTrack: Track, track
     }
 
     // Draw revolutions
-    ctx.globalAlpha = 1.0;
-    for (const { thickness, radius, angle } of tracks) {
+    for (const track of tracks) {
+      const { thickness, radius, angle, distFromStart, distFromEnd } = track;
+      const dist = Math.abs(distFromStart) < Math.abs(distFromEnd) ? distFromStart : distFromEnd;
       const lineWidth = TRACK_WIDTH * thickness;
-      ctx.lineWidth = lineWidth;
+
+      ctx.globalAlpha = math.clamp(1 - dist / 6, 0.5, 1.0);
+      ctx.lineWidth = lineWidth * math.clamp(1 - dist / 6, 0.15, 1.0);
+
       ctx.beginPath();
       if (angle > EPSILON) {
         // Draw the remaining duration of this hour (track) as a thick arc
@@ -198,3 +223,5 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track) => {
     ctx.restore();
   }
 };
+
+const unmix = (a: number, b: number, v: number): number => (v - a) / (b - a);
