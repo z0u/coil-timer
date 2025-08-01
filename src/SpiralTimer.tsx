@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { Scan } from 'lucide-react';
+import { GitMerge, Scan } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
@@ -9,10 +9,10 @@ import { TimerState } from './TimerState';
 import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
 import { useMultiClick } from './useMultiClick';
+import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
-import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 
 // Interaction state for timer duration adjustments
 interface TimerInteraction {
@@ -225,22 +225,47 @@ const SpiralTimer = () => {
         </span>
       </JogDial>
 
-      <button
-        aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
-        title="Fullscreen"
+      <div
         className={clsx(
           'absolute top-6 right-6 ',
-          'cursor-pointer text-gray-400',
           'transition-opacity duration-500',
           controlsAreVisible ? 'opacity-100' : 'opacity-0',
+          'flex gap-4',
         )}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleFullscreen();
-        }}
       >
-        <Scan size={24} />
-      </button>
+        <button
+          aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title="Fullscreen"
+          className={clsx('cursor-pointer text-gray-400')}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFullscreen();
+          }}
+        >
+          <Scan size={24} />
+        </button>
+      </div>
+
+      <div
+        className={clsx(
+          'absolute bottom-6 right-6 ',
+          'transition-opacity duration-500',
+          controlsAreVisible ? 'opacity-100' : 'opacity-0',
+          'flex gap-4',
+        )}
+      >
+        <a
+          aria-label="Source code on GitHub"
+          title="Source code"
+          className={clsx('cursor-pointer text-gray-400')}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          href="https://github.com/z0u/coil-timer"
+        >
+          <GitMerge size={24} />
+        </a>
+      </div>
     </div>
   );
 };
