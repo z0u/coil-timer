@@ -278,7 +278,7 @@ const SpiralTimer = () => {
             'leading-none font-[Inconsolata,monospace] ',
             'text-gray-600 dark:text-gray-300 dark:text-shadow-lg/30',
             'transition-opacity duration-500',
-            controlsAreVisible ? 'opacity-100' : 'opacity-0',
+            timerState.is === 'interacting' || controlsAreVisible ? 'opacity-100' : 'opacity-0',
           )}
           onJogStart={handleJogStart}
           onJogMove={handleJogMove}
