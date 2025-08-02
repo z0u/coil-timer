@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Ellipsis, GitMerge, HelpCircle, Scan, X } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
+import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
 import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
 import { TimerState } from './TimerState';
@@ -10,13 +11,13 @@ import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
+import { useDeviceCapabilities } from './useDeviceCapabilities';
 import { useDrawClockFace } from './useDrawClockFace';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
-import { HelpScreen } from './HelpScreen';
 
 // Interaction state for timer duration adjustments
 interface TimerInteraction {
@@ -33,6 +34,8 @@ const FPS: Record<TimerState['is'], number> = {
 };
 
 const SpiralTimer = () => {
+  // Device capabilities
+  const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
   const [timerState, setTimerState] = usePersistentTimerState();
 
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
@@ -233,11 +236,30 @@ const SpiralTimer = () => {
       >
         <canvas ref={setCanvas} className={clsx('w-full h-full')} />
         <JogDial
-          aria-label={
-            isOrWas === 'paused'
-              ? 'Timer control: tap to start, drag to adjust time'
-              : 'Timer control: tap to pause, drag to adjust time'
-          }
+          aria-label={(() => {
+            // Compose ARIA label based on device
+            if (isTouchDevice && !hasKeyboard) {
+              // Likely a phone/tablet
+              return isOrWas === 'paused'
+                ? 'Timer control: tap to start, drag to adjust time'
+                : 'Timer control: tap to pause, drag to adjust time';
+            } else if (hasKeyboard && !isTouchDevice) {
+              // Likely desktop with keyboard only
+              return isOrWas === 'paused'
+                ? 'Timer control: press space or enter to start, arrow keys to adjust time'
+                : 'Timer control: press space or enter to pause, arrow keys to adjust time';
+            } else if (isTouchDevice && hasKeyboard) {
+              // Convertible or hybrid device
+              return isOrWas === 'paused'
+                ? 'Timer control: tap or press space/enter to start, drag or use arrow keys to adjust time'
+                : 'Timer control: tap or press space/enter to pause, drag or use arrow keys to adjust time';
+            } else {
+              // Fallback
+              return isOrWas === 'paused'
+                ? 'Timer control: activate to start, adjust time'
+                : 'Timer control: activate to pause, adjust time';
+            }
+          })()}
           title="Timer control"
           className={clsx(
             'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
