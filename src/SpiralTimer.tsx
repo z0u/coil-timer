@@ -16,6 +16,7 @@ import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
+import { HelpScreen } from './HelpScreen';
 
 // Interaction state for timer duration adjustments
 interface TimerInteraction {
@@ -34,7 +35,6 @@ const FPS: Record<TimerState['is'], number> = {
 const SpiralTimer = () => {
   const [timerState, setTimerState] = usePersistentTimerState();
 
-  // const [showControls, setShowControls] = useState(true);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
@@ -257,56 +257,12 @@ const SpiralTimer = () => {
         </JogDial>
       </div>
 
-      <div
-        className={clsx(
-          'absolute inset-0',
-          'text-white text-shadow-lg/30',
-          'transition-all duration-500',
-          isHelpVisible ? 'opacity-100 backdrop-blur-xs' : 'opacity-0 backdrop-blur-[0]',
-          'pointer-events-none',
-        )}
-      >
-        {/* Help for clock face */}
-        <div
-          className={clsx(
-            'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-            'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
-            'flex flex-col items-center justify-center',
-            'text-white text-shadow-lg/30',
-          )}
-        >
-          <div>
-            <h2 className="text-lg text-gray-300 mb-2">Clock face</h2>
-            <ul>
-              <li>
-                <strong>Tap:</strong> resume
-              </li>
-              <li>
-                <strong>Hold:</strong> show end time
-              </li>
-              <li>
-                <strong>Swipe:</strong> set time
-              </li>
-            </ul>
-          </div>
-        </div>
-        {/* Help for background */}
-        <div className={clsx('absolute top-6 left-6', 'text-white text-shadow-lg/30')}>
-          <h2 className="text-lg text-gray-300 mb-2">Background</h2>
-          <ul>
-            <li>
-              <strong>Tap:</strong> show/hide controls
-            </li>
-            <li>
-              <strong>Tap-tap:</strong> enter fullscreen
-            </li>
-            <li>
-              <strong>Scroll:</strong> set time
-            </li>
-          </ul>
-          <p className="text-sm mt-2">Full-screen mode hides the phone status bar.</p>
-        </div>
-      </div>
+      <HelpScreen
+        isHelpVisible={isHelpVisible}
+        isPaused={timerState.is === 'paused'}
+        controlsAreVisible={controlsAreVisible}
+        onCloseClicked={() => setIsHelpVisible(false)}
+      />
 
       {/* Toolbar top */}
       <Toolbar
@@ -316,7 +272,6 @@ const SpiralTimer = () => {
         trigger={
           <ToggleButton
             isToggled={isMenuVisible}
-            isVisible={!isHelpVisible}
             onToggle={() => setIsMenuVisible((visible) => !visible)}
             aria-label={isMenuVisible ? 'Hide menu' : 'Show menu'}
             title="Menu"
@@ -328,29 +283,22 @@ const SpiralTimer = () => {
         <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
-          isVisible={isHelpVisible ? false : null}
           onClick={toggleFullscreen}
         >
           <Scan size={24} />
         </ToolbarButton>
 
-        <ToolbarButton
-          href="https://github.com/z0u/coil-timer"
-          aria-label="Source code on GitHub"
-          title="Source code"
-          isVisible={isHelpVisible ? false : null}
-        >
+        <ToolbarButton href="https://github.com/z0u/coil-timer" aria-label="Source code on GitHub" title="Source code">
           <GitMerge size={24} />
         </ToolbarButton>
 
-        <ToggleButton
-          isToggled={isHelpVisible}
-          onToggle={() => setIsHelpVisible((value) => !value)}
+        <ToolbarButton
+          onClick={() => setIsHelpVisible(true)}
           aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
           title="Help"
-          defaultIcon={<HelpCircle size={24} />}
-          toggledIcon={<X size={24} />}
-        />
+        >
+          <HelpCircle size={24} />
+        </ToolbarButton>
       </Toolbar>
     </div>
   );

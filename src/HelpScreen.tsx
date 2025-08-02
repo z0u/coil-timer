@@ -1,0 +1,80 @@
+import clsx from 'clsx';
+import { X } from 'lucide-react';
+import { useDeviceCapabilities } from './useDeviceCapabilities';
+
+type HelpScreenProps = {
+  isHelpVisible: boolean;
+  isPaused: boolean;
+  controlsAreVisible: boolean;
+  onCloseClicked: () => void;
+};
+
+export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onCloseClicked }: HelpScreenProps) => {
+  const device = useDeviceCapabilities();
+
+  if (!isHelpVisible) return null;
+
+  return (
+    <div
+      className={clsx(
+        'absolute inset-0 z-1',
+        'text-white text-shadow-lg/30',
+        'transition-all duration-500',
+        isHelpVisible ? 'opacity-100 backdrop-blur-xs' : 'opacity-0 backdrop-blur-[0]',
+        'pointer-events-none',
+      )}
+    >
+      <button
+        aria-label="Dismiss help"
+        className={clsx('absolute top-6 right-6', 'cursor-pointer text-gray-400', 'pointer-events-auto')}
+        onClick={onCloseClicked}
+      >
+        <X size={24} />
+      </button>
+
+      {/* Help for clock face */}
+      <div
+        className={clsx(
+          'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
+          'w-(--clock-diameter) h-(--clock-diameter) breathe-animation',
+          'flex flex-col items-center justify-center',
+          'text-white text-shadow-lg/30',
+        )}
+      >
+        <div>
+          <h2 className="text-lg text-gray-300 mb-2">Clock face</h2>
+          <ul>
+            <li>
+              <strong>{device.isTouchDevice ? 'Tap' : 'Click'}:</strong> {isPaused ? 'resume' : 'pause'}
+            </li>
+            <li>
+              <strong>Hold:</strong> show end time
+            </li>
+            <li>
+              <strong>{device.isTouchDevice ? 'Swipe' : 'Drag'}:</strong> set time
+            </li>
+          </ul>
+        </div>
+      </div>
+      {/* Help for background */}
+      <div className={clsx('absolute top-6 left-6', 'text-white text-shadow-lg/30')}>
+        <h2 className="text-lg text-gray-300 mb-2">Background</h2>
+        <ul>
+          <li>
+            <strong>{device.isTouchDevice ? 'Tap' : 'Click'}:</strong> {controlsAreVisible ? 'hide' : 'show'} controls
+            {isPaused && ' (when running)'}
+          </li>
+          <li>
+            <strong>{device.isTouchDevice ? 'Tap-tap' : 'Double-click'}:</strong> enter fullscreen
+          </li>
+          {!device.isMobile && (
+            <li>
+              <strong>Scroll:</strong> set time
+            </li>
+          )}
+        </ul>
+        {device.isMobile && <p className="text-sm mt-2">Full-screen mode hides the phone status bar.</p>}
+      </div>
+    </div>
+  );
+};
