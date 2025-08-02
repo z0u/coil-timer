@@ -169,8 +169,8 @@ const SpiralTimer = () => {
       e.preventDefault();
       setIsActive(true);
       const delta = e.deltaY;
-      // 1 minute per notch, invert for natural scroll
-      addTime((delta > 0 ? -30 : 30) * Seconds);
+      const change = e.shiftKey ? 5 * Minutes : 30 * Seconds;
+      addTime(delta > 0 ? -change : change);
     },
     [timerState],
   );
