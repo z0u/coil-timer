@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { GitMerge, Scan } from 'lucide-react';
+import { GitMerge, HelpCircle, Scan, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
@@ -38,6 +38,7 @@ const SpiralTimer = () => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
+  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   useWakeLock({ enable: timerState.is === 'running' });
 
@@ -169,62 +170,118 @@ const SpiralTimer = () => {
   useNonPassiveWheelHandler(container, handleWheel);
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
+  const isDimmed = !isHelpVisible && timerState.is === 'paused' && !isActive;
 
   return (
     <div
       ref={setContainer}
-      className={clsx(
-        'h-screen overflow-hidden',
-        'text-white',
-        'flex flex-col items-center justify-center',
-        'transition-opacity',
-        timerState.is === 'paused' && !isActive ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-300',
-      )}
+      className={clsx('h-screen overflow-hidden', 'text-white', 'flex flex-col items-center justify-center')}
       style={{ '--clock-diameter': `${(clockRadius ?? 100) * 2}px` } as React.CSSProperties}
       onClick={handleBackgroundClicks}
     >
-      <canvas ref={setCanvas} className={clsx('w-full h-full', 'breathe-animation')} />
-
-      <JogDial
-        aria-label={
-          isOrWas === 'paused'
-            ? 'Timer control: tap to start, drag to adjust time'
-            : 'Timer control: tap to pause, drag to adjust time'
-        }
-        title="Timer control"
+      {/* Clock face */}
+      <div
         className={clsx(
-          'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-          'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
-          'flex-col items-center justify-center',
-          'leading-none font-[Inconsolata,monospace] ',
-          'text-gray-300 text-shadow-lg/30',
-          'transition-opacity duration-500',
-          controlsAreVisible ? 'opacity-100' : 'opacity-0',
+          'w-full h-full',
+          'breathe-animation',
+          'transition-opacity',
+          isDimmed ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-1000',
         )}
-        onJogStart={handleJogStart}
-        onJogMove={handleJogMove}
-        onJogEnd={handleJogEnd}
       >
-        <span className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
-          <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
-          <span className="inline-block w-0 flex items-baseline">
-            <AnimatedColon isRunning={timerState.is === 'running'} />
+        <canvas ref={setCanvas} className={clsx('w-full h-full')} />
+        <JogDial
+          aria-label={
+            isOrWas === 'paused'
+              ? 'Timer control: tap to start, drag to adjust time'
+              : 'Timer control: tap to pause, drag to adjust time'
+          }
+          title="Timer control"
+          className={clsx(
+            'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
+            'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+            'leading-none font-[Inconsolata,monospace] ',
+            'text-gray-300 text-shadow-lg/30',
+            'transition-opacity duration-500',
+            controlsAreVisible ? 'opacity-100' : 'opacity-0',
+          )}
+          onJogStart={handleJogStart}
+          onJogMove={handleJogMove}
+          onJogEnd={handleJogEnd}
+        >
+          <span className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
+            <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
+            <span className="inline-block w-0 flex items-baseline">
+              <AnimatedColon isRunning={timerState.is === 'running'} />
+            </span>
           </span>
-        </span>
-        <span className="block h-0 text-[calc(min(5vh,5vw))]">
-          <span
-            ref={setEndTimeEl}
-            className={clsx(
-              'text-gray-400 before:text-gray-600',
-              'transition-opacity duration-500 delay-2000',
-              timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
-            )}
-          >
-            --
+          <span className="block h-0 text-[calc(min(5vh,5vw))]">
+            <span
+              ref={setEndTimeEl}
+              className={clsx(
+                'text-gray-400 before:text-gray-600',
+                'transition-opacity duration-500 delay-2000',
+                timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
+              )}
+            >
+              --
+            </span>
           </span>
-        </span>
-      </JogDial>
+        </JogDial>
+      </div>
 
+      <div
+        className={clsx(
+          'absolute inset-0',
+          'text-white text-shadow-lg/30',
+          'transition-all duration-500',
+          isHelpVisible ? 'opacity-100 backdrop-blur-xs' : 'opacity-0 backdrop-blur-[0]',
+          'pointer-events-none',
+        )}
+      >
+        {/* Help for clock face */}
+        <div
+          className={clsx(
+            'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
+            'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+            'flex flex-col items-center justify-center',
+            'text-white text-shadow-lg/30',
+            'bg-white/5',
+          )}
+        >
+          <div>
+            <h2 className="text-lg text-gray-300 mb-2">Clock face</h2>
+            <ul>
+              <li>
+                <strong>Tap:</strong> resume
+              </li>
+              <li>
+                <strong>Hold:</strong> show end time
+              </li>
+              <li>
+                <strong>Swipe:</strong> set time
+              </li>
+            </ul>
+          </div>
+        </div>
+        {/* Help for background */}
+        <div className={clsx('absolute top-6 left-6', 'text-white text-shadow-lg/30')}>
+          <h2 className="text-lg text-gray-300 mb-2">Background</h2>
+          <ul>
+            <li>
+              <strong>Tap:</strong> show/hide controls
+            </li>
+            <li>
+              <strong>Tap-tap:</strong> enter fullscreen
+            </li>
+            <li>
+              <strong>Scroll:</strong> set time
+            </li>
+          </ul>
+          <p className="text-sm mt-2">Full-screen mode hides the phone status bar.</p>
+        </div>
+      </div>
+
+      {/* Toolbar top */}
       <div
         className={clsx(
           'absolute top-6 right-6 ',
@@ -236,7 +293,11 @@ const SpiralTimer = () => {
         <button
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
-          className={clsx('cursor-pointer text-gray-400')}
+          className={clsx(
+            'cursor-pointer text-gray-400',
+            'transition-opacity duration-200',
+            isHelpVisible ? 'opacity-0' : 'opacity-100',
+          )}
           onClick={(e) => {
             e.stopPropagation();
             toggleFullscreen();
@@ -246,6 +307,7 @@ const SpiralTimer = () => {
         </button>
       </div>
 
+      {/* Toolbar bottom */}
       <div
         className={clsx(
           'absolute bottom-6 right-6 ',
@@ -257,7 +319,11 @@ const SpiralTimer = () => {
         <a
           aria-label="Source code on GitHub"
           title="Source code"
-          className={clsx('cursor-pointer text-gray-400')}
+          className={clsx(
+            'cursor-pointer text-gray-400',
+            'transition-opacity duration-200',
+            isHelpVisible ? 'opacity-0' : 'opacity-100',
+          )}
           onClick={(e) => {
             e.stopPropagation();
           }}
@@ -265,6 +331,29 @@ const SpiralTimer = () => {
         >
           <GitMerge size={24} />
         </a>
+
+        <button
+          aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
+          title="Help"
+          className={clsx('cursor-pointer text-gray-400', 'relative')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsHelpVisible((value) => !value);
+          }}
+        >
+          <HelpCircle
+            size={24}
+            className={clsx('transition-opacity duration-200', isHelpVisible ? 'opacity-0' : 'opacity-100')}
+          />
+          <X
+            size={24}
+            className={clsx(
+              'absolute inset-0',
+              'transition-opacity duration-200',
+              isHelpVisible ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+        </button>
       </div>
     </div>
   );
