@@ -30,24 +30,37 @@ export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, classN
     }
   }, [isOpen, onToggle]);
 
-  // Handle click outside to close
+  // Handle click outside to close, or click on menu items to close
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       const target = e.target as Element;
-      if (isOpen && !target.closest('[data-toolbar]')) {
-        onToggle();
+      const toolbarElement = target.closest('[data-toolbar]');
+      const triggerElement = triggerRef.current;
+
+      if (isOpen) {
+        // Close if clicking outside the toolbar
+        if (!toolbarElement) {
+          onToggle();
+        }
+        // Close if clicking on a menu item (but not the trigger button)
+        else if (toolbarElement && triggerElement && !triggerElement.contains(target)) {
+          // Check if the clicked element is a button or link (menu item)
+          const isMenuItem = target.closest('button, a');
+          if (isMenuItem) {
+            onToggle();
+          }
+        }
       }
     };
 
     if (isOpen) {
-      document.addEventListener('click', handleClickOutside, { capture: true });
-      return () => document.removeEventListener('click', handleClickOutside, { capture: true });
+      document.addEventListener('click', handleClick, { capture: true });
+      return () => document.removeEventListener('click', handleClick, { capture: true });
     }
   }, [isOpen, onToggle]);
 
   return (
-    <div
-      role="navigation"
+    <nav
       data-toolbar
       className={clsx(
         'absolute top-6 inset-x-6',
@@ -73,6 +86,6 @@ export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, classN
       >
         {children}
       </div>
-    </div>
+    </nav>
   );
 };

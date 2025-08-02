@@ -20,6 +20,19 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
     }
   }, [isHelpVisible, closeButton]);
 
+  useEffect(() => {
+    if (!isHelpVisible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseClicked();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isHelpVisible, onCloseClicked]);
+
   return (
     <div
       className={clsx(
