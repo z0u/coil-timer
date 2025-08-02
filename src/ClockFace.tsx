@@ -2,6 +2,7 @@ import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { TailwindColorProbe, TailwindColors } from './TailwindColorProbe';
 import { Hours } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
@@ -40,6 +41,12 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
     const timeToDrawRef = useRef(initialTime);
 
+    const [twColors, setTwColors] = useState<TailwindColors>({
+      track: '#ef4444',
+      tick: '#fff',
+      bg: '#000',
+    });
+
     const drawClockFace = useCallback(() => {
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx || !dimensions) return;
@@ -57,6 +64,10 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
 
       ctx.clearRect(0, 0, width, height);
 
+      // Use theme colors from TailwindColorProbe
+      const trackColor = twColors.track;
+      const tickColor = twColors.tick;
+
       const tracks = getTracks(timeToDrawRef.current, CLOCK_DIAMETER, TRACK_SPACING, Hours);
       const finalTrack = tracks[tracks.length - 1];
       if (!finalTrack) return;
@@ -67,8 +78,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
         // Use relative coordinates
         ctx.translate(center[0], center[1]);
         ctx.scale(dimensions.radius, dimensions.radius);
-        drawClockTicks(ctx, finalTrack);
-        drawRevolutions(ctx, tracks);
+        drawClockTicks(ctx, finalTrack, tickColor);
+        drawRevolutions(ctx, tracks, trackColor);
       } finally {
         ctx.restore();
       }
@@ -104,7 +115,12 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       drawClockFace();
     }, [drawClockFace]);
 
-    return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
+    return (
+      <>
+        <TailwindColorProbe onColorsChange={setTwColors} />
+        <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />
+      </>
+    );
   },
 );
 
@@ -159,16 +175,14 @@ const getTracks = (
   return tracks;
 };
 
-const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[]) => {
+const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], trackColor: string) => {
   const finalTrack = tracks[tracks.length - 1];
   if (!finalTrack) return;
 
-  // console.log(finalTrack.dt);
-
   ctx.save();
   try {
-    ctx.strokeStyle = '#ef4444';
-    ctx.fillStyle = '#ef4444';
+    ctx.strokeStyle = trackColor;
+    ctx.fillStyle = trackColor;
     ctx.lineCap = 'round';
 
     // Draw faint tracks as complete circles
@@ -208,11 +222,11 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[]) => {
   }
 };
 
-const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track) => {
+const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickColor: string) => {
   ctx.save();
   try {
-    ctx.strokeStyle = 'white';
-    ctx.fillStyle = 'white';
+    ctx.strokeStyle = tickColor;
+    ctx.fillStyle = tickColor;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -226,7 +240,6 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track) => {
       const proximity = math.clamp(1 - angleDist / math.rad(35), 0, 1);
 
       ctx.save();
-      // ctx.translate(center[0], center[1]);
       ctx.rotate(angle - math.PI); // Start from top
       ctx.globalAlpha = isPrimary ? 1 : proximity * 0.9;
       if (isPrimary) {
