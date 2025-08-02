@@ -244,10 +244,18 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
       const isPrimary = i === 0;
 
       // Calculate proximity for alpha blending
-      const angleDist = math.angleDist(
-        finalTrack.angle,
-        angle + math.TAU / 24, // Add a bit to brighten future ticks more
-      );
+      let angleDist: number;
+      if (finalTrack.rev === 0) {
+        // Special case: don't use math.angleDist when the final track is also track 0, i.e. it is the last/only track.
+        // This prevents ticks < 0 from showing.
+        angleDist = Math.abs(finalTrack.angle - (angle + math.TAU / 24));
+      } else {
+        // For tracks > 0, treat the difference as cyclic to show ticks on both sides of the start.
+        angleDist = math.angleDist(
+          finalTrack.angle,
+          angle + math.TAU / 24, // Add a bit to brighten future ticks more
+        );
+      }
       const proximity = math.clamp(1 - angleDist / math.rad(30), 0, 1);
 
       ctx.save();
