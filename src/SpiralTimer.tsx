@@ -51,7 +51,32 @@ const SpiralTimer = () => {
 
   useEffect(() => {
     setMustShowControls(true);
-  }, [timerState.is]);
+  }, [timerState.is, setMustShowControls]);
+
+  const clampTime = (time: number) => math.clamp(time, 0, 24 * Hours);
+
+  const setRunningOrPaused = useCallback(
+    (state: 'running' | 'paused', remainingTime: number) => {
+      const newRemainingTime = clampTime(remainingTime);
+      if (newRemainingTime <= 0 && state === 'running') {
+        state = 'paused';
+      }
+
+      if (state === 'running') {
+        setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
+      } else {
+        setTimerState({ is: 'paused', remainingTime: newRemainingTime });
+      }
+    },
+    [setTimerState],
+  );
+
+  const toggleRunningOrPaused = useCallback(() => {
+    if (timerState.is === 'interacting') return;
+    const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
+    const nextState = timerState.is === 'running' ? 'paused' : 'running';
+    setRunningOrPaused(nextState, remainingTime);
+  }, [timerState, setRunningOrPaused]);
 
   const { drawClockFace, clockRadius } = useDrawClockFace({ canvas });
 
@@ -79,9 +104,24 @@ const SpiralTimer = () => {
     drawClockFace(remainingTime);
     if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
     if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-  }, [timeEl, endTimeEl, timerState, drawClockFace]);
+  }, [timeEl, endTimeEl, timerState, drawClockFace, setTimerState]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
+
+  const addTime = useCallback(
+    (change: number) => {
+      if (timerState.is === 'interacting') {
+        // Do nothing: already dragging
+        setTimerState({ ...timerState });
+        return;
+      }
+      const remainingTime = timerState.is === 'paused' ? timerState.remainingTime : timerState.endTime - Date.now();
+      const newRemainingTime = clampTime(remainingTime + change);
+
+      setRunningOrPaused(timerState.is, newRemainingTime);
+    },
+    [timerState, setTimerState, setRunningOrPaused],
+  );
 
   // JogDial interaction handlers
   const handleJogStart = () => {
@@ -96,7 +136,7 @@ const SpiralTimer = () => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
     const deltaTime = (event.deltaAngle / math.TAU) * 1 * Hour;
-    const newDuration = math.clamp(timerInteractionRef.current.remainingTime + deltaTime, 0, 24 * Hours);
+    const newDuration = clampTime(timerInteractionRef.current.remainingTime + deltaTime);
     timerInteractionRef.current.remainingTime = newDuration;
     timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached
   };
@@ -105,34 +145,30 @@ const SpiralTimer = () => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
     const { remainingTime } = timerInteractionRef.current;
-    let nextState: 'running' | 'paused';
-    let newRemainingTime: number;
 
     if (event.wasDragged) {
       // If dragged, round to the nearest minute and resume previous state
-      nextState = timerState.was;
-      newRemainingTime = math.roundTo(remainingTime, Minutes);
+      const newRemainingTime = math.roundTo(remainingTime, Minutes);
+      setRunningOrPaused(timerState.was, newRemainingTime);
     } else {
       // If tapped, toggle between running and paused
-      nextState = timerState.was === 'running' ? 'paused' : 'running';
-      newRemainingTime = remainingTime;
-    }
-
-    if (newRemainingTime <= 0) {
-      nextState = 'paused';
-      newRemainingTime = 0;
-    }
-
-    if (nextState === 'running') {
-      setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
-    } else {
-      setTimerState({ is: 'paused', remainingTime: newRemainingTime });
+      const nextState = timerState.was === 'running' ? 'paused' : 'running';
+      setRunningOrPaused(nextState, remainingTime);
     }
   };
 
   const handleJogKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (timerState.is === 'interacting') {
+      // Prevent simultaneous interaction
+      return;
+    }
+
     setIsActive(true);
     switch (event.key) {
+      case 'Enter':
+      case ' ':
+        toggleRunningOrPaused();
+        break;
       case 'ArrowUp':
         addTime(event.shiftKey ? 1 * Hour : 5 * Minutes);
         break;
@@ -172,29 +208,9 @@ const SpiralTimer = () => {
       const change = e.shiftKey ? 5 * Minutes : 30 * Seconds;
       addTime(delta > 0 ? -change : change);
     },
-    [timerState],
+    [addTime, setIsActive],
   );
   useNonPassiveWheelHandler(container, handleWheel);
-
-  const addTime = (change: number) => {
-    if (timerState.is === 'interacting') {
-      // Do nothing: already dragging
-      setTimerState({ ...timerState });
-      return;
-    }
-    const remainingTime = timerState.is === 'paused' ? timerState.remainingTime : timerState.endTime - Date.now();
-    const newRemaininTime = math.clamp(remainingTime + change, 0, 24 * Hours);
-
-    if (timerState.is === 'paused') {
-      setTimerState({ ...timerState, remainingTime: newRemaininTime });
-    } else if (timerState.is === 'running') {
-      if (newRemaininTime <= 0) {
-        setTimerState({ is: 'paused', remainingTime: 0 });
-      } else {
-        setTimerState({ is: 'running', endTime: Date.now() + newRemaininTime });
-      }
-    }
-  };
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
   const isDimmed = !isHelpVisible && timerState.is === 'paused' && !isActive;
