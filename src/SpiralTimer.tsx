@@ -1,9 +1,12 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { GitMerge, HelpCircle, Scan, X } from 'lucide-react';
+import { Ellipsis, GitMerge, HelpCircle, Scan, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
+import { ToggleButton } from './ToggleButton';
+import { Toolbar } from './Toolbar';
+import { ToolbarButton } from './ToolbarButton';
 import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minutes, Second, Seconds } from './time-utils';
 import { TimerState } from './TimerState';
 import { useAnimation } from './useAnimation';
@@ -38,6 +41,7 @@ const SpiralTimer = () => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   useWakeLock({ enable: timerState.is === 'running' });
@@ -245,7 +249,6 @@ const SpiralTimer = () => {
             'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
             'flex flex-col items-center justify-center',
             'text-white text-shadow-lg/30',
-            'bg-white/5',
           )}
         >
           <div>
@@ -282,79 +285,49 @@ const SpiralTimer = () => {
       </div>
 
       {/* Toolbar top */}
-      <div
-        className={clsx(
-          'absolute top-6 right-6 ',
-          'transition-opacity duration-500',
-          controlsAreVisible ? 'opacity-100' : 'opacity-0',
-          'flex gap-4',
-        )}
+      <Toolbar
+        isVisible={controlsAreVisible}
+        isOpen={isMenuVisible}
+        onToggle={() => setIsMenuVisible((visible) => !visible)}
+        trigger={
+          <ToggleButton
+            isToggled={isMenuVisible}
+            isVisible={!isHelpVisible}
+            onToggle={() => setIsMenuVisible((visible) => !visible)}
+            aria-label={isMenuVisible ? 'Hide menu' : 'Show menu'}
+            title="Menu"
+            defaultIcon={<Ellipsis size={24} />}
+            toggledIcon={<X size={24} />}
+          />
+        }
       >
-        <button
+        <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
-          className={clsx(
-            'cursor-pointer text-gray-400',
-            'transition-opacity duration-200',
-            isHelpVisible ? 'opacity-0' : 'opacity-100',
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleFullscreen();
-          }}
+          isVisible={isHelpVisible ? false : null}
+          onClick={toggleFullscreen}
         >
           <Scan size={24} />
-        </button>
-      </div>
+        </ToolbarButton>
 
-      {/* Toolbar bottom */}
-      <div
-        className={clsx(
-          'absolute bottom-6 right-6 ',
-          'transition-opacity duration-500',
-          controlsAreVisible ? 'opacity-100' : 'opacity-0',
-          'flex gap-4',
-        )}
-      >
-        <a
+        <ToolbarButton
+          href="https://github.com/z0u/coil-timer"
           aria-label="Source code on GitHub"
           title="Source code"
-          className={clsx(
-            'cursor-pointer text-gray-400',
-            'transition-opacity duration-200',
-            isHelpVisible ? 'opacity-0' : 'opacity-100',
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          href="https://github.com/z0u/coil-timer"
+          isVisible={isHelpVisible ? false : null}
         >
           <GitMerge size={24} />
-        </a>
+        </ToolbarButton>
 
-        <button
+        <ToggleButton
+          isToggled={isHelpVisible}
+          onToggle={() => setIsHelpVisible((value) => !value)}
           aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
           title="Help"
-          className={clsx('cursor-pointer text-gray-400', 'relative')}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsHelpVisible((value) => !value);
-          }}
-        >
-          <HelpCircle
-            size={24}
-            className={clsx('transition-opacity duration-200', isHelpVisible ? 'opacity-0' : 'opacity-100')}
-          />
-          <X
-            size={24}
-            className={clsx(
-              'absolute inset-0',
-              'transition-opacity duration-200',
-              isHelpVisible ? 'opacity-100' : 'opacity-0',
-            )}
-          />
-        </button>
-      </div>
+          defaultIcon={<HelpCircle size={24} />}
+          toggledIcon={<X size={24} />}
+        />
+      </Toolbar>
     </div>
   );
 };
