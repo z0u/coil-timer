@@ -40,8 +40,8 @@ export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, classN
     };
 
     if (isOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener('click', handleClickOutside, { capture: true });
+      return () => document.removeEventListener('click', handleClickOutside, { capture: true });
     }
   }, [isOpen, onToggle]);
 

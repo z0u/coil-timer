@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 
 type HelpScreenProps = {
@@ -11,8 +12,13 @@ type HelpScreenProps = {
 
 export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onCloseClicked }: HelpScreenProps) => {
   const device = useDeviceCapabilities();
+  const [closeButton, setCloseButton] = useState<HTMLButtonElement | null>(null);
 
-  if (!isHelpVisible) return null;
+  useEffect(() => {
+    if (isHelpVisible) {
+      closeButton?.focus();
+    }
+  }, [isHelpVisible, closeButton]);
 
   return (
     <div
@@ -25,8 +31,13 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
       )}
     >
       <button
+        ref={setCloseButton}
         aria-label="Dismiss help"
-        className={clsx('absolute top-6 right-6', 'cursor-pointer text-gray-400', 'pointer-events-auto')}
+        className={clsx(
+          'absolute top-6 right-6',
+          'cursor-pointer text-gray-400',
+          isHelpVisible && 'pointer-events-auto',
+        )}
         onClick={onCloseClicked}
       >
         <X size={24} />
