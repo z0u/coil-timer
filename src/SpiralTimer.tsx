@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Ellipsis, GitMerge, HelpCircle, Scan, X } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
+import { ClockFace, ClockFaceHandle } from './ClockFace';
 import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
 import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
@@ -12,7 +13,6 @@ import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
-import { useDrawClockFace } from './useDrawClockFace';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
 import { usePersistentTimerState } from './usePersistentTimerState';
@@ -38,15 +38,16 @@ const SpiralTimer = () => {
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
   const [timerState, setTimerState] = usePersistentTimerState();
 
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
+  const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
   const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
+  const [clockRadius, setClockRadius] = useState<number | null>(null);
 
   useWakeLock({ enable: timerState.is === 'running' });
 
@@ -82,8 +83,6 @@ const SpiralTimer = () => {
     setRunningOrPaused(nextState, remainingTime);
   }, [timerState, setRunningOrPaused]);
 
-  const { drawClockFace, clockRadius } = useDrawClockFace({ canvas });
-
   const runFrame = useCallback(() => {
     let remainingTime: number;
     let endTime: number;
@@ -105,10 +104,10 @@ const SpiralTimer = () => {
       throw new Error(`Unknown state: ${timerState}`);
     }
 
-    drawClockFace(remainingTime);
+    if (clockFace) clockFace.setTime(remainingTime);
     if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
     if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-  }, [timeEl, endTimeEl, timerState, drawClockFace, setTimerState]);
+  }, [timeEl, endTimeEl, timerState, setTimerState]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
 
@@ -235,7 +234,11 @@ const SpiralTimer = () => {
           isDimmed ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-1000',
         )}
       >
-        <canvas ref={setCanvas} className={clsx('w-full h-full')} />
+        <ClockFace
+          ref={setClockFace}
+          initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
+          onClockRadiusChange={setClockRadius}
+        />
         <JogDial
           ref={setJogDial}
           aria-label={(() => {

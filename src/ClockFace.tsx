@@ -1,6 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
-import { useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Hours } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
@@ -17,8 +18,14 @@ const MAJOR_TICK_WIDTH = 0.024;
 const MINOR_TICK_WIDTH = 0.016;
 const TRACK_WIDTH = 0.025;
 
-type UseDrawClockFaceProps = {
-  canvas: HTMLCanvasElement | null;
+export type ClockFaceHandle = {
+  setTime: (time: number) => void;
+};
+
+type ClockFaceProps = {
+  className?: string;
+  onClockRadiusChange?: (radius: number) => void;
+  initialTime: number;
 };
 
 type Dimensions = {
@@ -27,24 +34,13 @@ type Dimensions = {
   radius: number;
 };
 
-export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
-  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
+  ({ className, onClockRadiusChange, initialTime }, ref) => {
+    const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+    const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+    const timeToDrawRef = useRef(initialTime);
 
-  useEffect(() => {
-    if (!canvas) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-      setDimensions({ width, height, radius: Math.min(width, height) / 2 });
-    });
-
-    resizeObserver.observe(canvas);
-    return () => resizeObserver.disconnect();
-  }, [canvas]);
-
-  const drawClockFace = useCallback(
-    (timeToDraw: number) => {
+    const drawClockFace = useCallback(() => {
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx || !dimensions) return;
 
@@ -61,7 +57,7 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
 
       ctx.clearRect(0, 0, width, height);
 
-      const tracks = getTracks(timeToDraw, CLOCK_DIAMETER, TRACK_SPACING, Hours);
+      const tracks = getTracks(timeToDrawRef.current, CLOCK_DIAMETER, TRACK_SPACING, Hours);
       const finalTrack = tracks[tracks.length - 1];
       if (!finalTrack) return;
       const center: v.Vec2Like = [width / 2, height / 2];
@@ -76,12 +72,41 @@ export const useDrawClockFace = ({ canvas }: UseDrawClockFaceProps) => {
       } finally {
         ctx.restore();
       }
-    },
-    [canvas, dimensions],
-  );
+    }, [canvas, dimensions]);
 
-  return { drawClockFace, clockRadius: (dimensions?.radius ?? 1) * TICK_OUTER_DIA };
-};
+    useImperativeHandle(
+      ref,
+      () => ({
+        setTime: (time) => {
+          timeToDrawRef.current = time;
+          drawClockFace();
+        },
+      }),
+      [drawClockFace],
+    );
+
+    useEffect(() => {
+      if (!canvas) return;
+
+      const resizeObserver = new ResizeObserver(() => {
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
+        const newDimensions = { width, height, radius: Math.min(width, height) / 2 };
+        setDimensions(newDimensions);
+        onClockRadiusChange?.(newDimensions.radius * TICK_OUTER_DIA);
+      });
+
+      resizeObserver.observe(canvas);
+      return () => resizeObserver.disconnect();
+    }, [canvas, onClockRadiusChange]);
+
+    useEffect(() => {
+      drawClockFace();
+    }, [drawClockFace]);
+
+    return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
+  },
+);
 
 type Track = {
   rev: number;
