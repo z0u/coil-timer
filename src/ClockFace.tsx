@@ -3,7 +3,6 @@ import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Hours } from './time-utils';
-import { useColorScheme } from './useColorScheme';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -25,6 +24,7 @@ export type ClockFaceHandle = {
 
 type ClockFaceProps = {
   className?: string;
+  colorScheme: string;
   onClockRadiusChange?: (radius: number) => void;
   initialTime: number;
 };
@@ -36,10 +36,9 @@ type Dimensions = {
 };
 
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
-  ({ className, onClockRadiusChange, initialTime }, ref) => {
+  ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-    const colorScheme = useColorScheme();
     const timeToDrawRef = useRef(initialTime);
 
     const theme = useMemo(() => {

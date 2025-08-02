@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { Ellipsis, GitMerge, HelpCircle, Scan, X } from 'lucide-react';
+import { Ellipsis, GitMerge, HelpCircle, Moon, Scan, Sun, SunMoon, X } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -12,6 +12,7 @@ import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
+import { Scheme, useColorScheme } from './useColorScheme';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
@@ -37,6 +38,7 @@ const SpiralTimer = () => {
   // Device capabilities
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
   const [timerState, setTimerState] = usePersistentTimerState();
+  const scheme = useColorScheme();
 
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
@@ -202,6 +204,11 @@ const SpiralTimer = () => {
     }
   };
 
+  const cycleColorScheme = () => {
+    const nextScheme: Scheme = scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'auto' : 'light';
+    scheme.update(nextScheme);
+  };
+
   // Wheel gesture handler for adding/subtracting time
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -242,6 +249,7 @@ const SpiralTimer = () => {
             'text-gray-600 dark:text-gray-200', // Ticks
             'bg-white dark:bg-black', // Background
           )}
+          colorScheme={scheme.effective}
           initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
           onClockRadiusChange={setClockRadius}
         />
@@ -351,6 +359,34 @@ const SpiralTimer = () => {
           title="Help"
         >
           <HelpCircle size={24} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={cycleColorScheme}
+          aria-label={`Switch to ${scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'system' : 'light'} theme`}
+          title="Toggle color scheme"
+        >
+          <Sun
+            size={24}
+            className={clsx(
+              'transition-opacity duration-200',
+              scheme.selected === 'light' ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+          <Moon
+            className={clsx(
+              'absolute inset-0',
+              'transition-opacity duration-200',
+              scheme.selected === 'dark' ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+          <SunMoon
+            className={clsx(
+              'absolute inset-0',
+              'transition-opacity duration-200',
+              scheme.selected === 'auto' ? 'opacity-100' : 'opacity-0',
+            )}
+          />
         </ToolbarButton>
       </Toolbar>
     </div>
