@@ -42,6 +42,7 @@ const SpiralTimer = () => {
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
   const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
@@ -236,6 +237,7 @@ const SpiralTimer = () => {
       >
         <canvas ref={setCanvas} className={clsx('w-full h-full')} />
         <JogDial
+          ref={setJogDial}
           aria-label={(() => {
             // Compose ARIA label based on device
             if (isTouchDevice && !hasKeyboard) {
@@ -299,7 +301,11 @@ const SpiralTimer = () => {
         isHelpVisible={isHelpVisible}
         isPaused={timerState.is === 'paused'}
         controlsAreVisible={controlsAreVisible}
-        onCloseClicked={() => setIsHelpVisible(false)}
+        onCloseClicked={() => {
+          setIsHelpVisible(false);
+          // Focus jog dial after help closes
+          setTimeout(() => jogDial?.focus());
+        }}
       />
 
       {/* Toolbar top */}
