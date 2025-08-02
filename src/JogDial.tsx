@@ -1,7 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
-import { useRef } from 'react';
+import { KeyboardEventHandler, useRef } from 'react';
 
 export interface JogEvent {
   deltaAngle: number;
@@ -21,6 +21,7 @@ export interface JogDialProps {
   onJogMove?: (event: JogEvent) => void;
   /** Called when pointer is released */
   onJogEnd?: (event: JogEvent) => void;
+  onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
   /** Distance threshold in pixels to distinguish tap from drag */
   dragTolerance?: number;
   /** Child elements to render inside the button */
@@ -43,6 +44,7 @@ export const JogDial: React.FC<JogDialProps> = ({
   onJogStart,
   onJogMove,
   onJogEnd,
+  onKeyDown,
   dragTolerance = TAP_DRAG_TOLERANCE,
   children,
 }) => {
@@ -109,6 +111,7 @@ export const JogDial: React.FC<JogDialProps> = ({
       onPointerMove={handlePointerMove}
       onLostPointerCapture={handleLostPointerCapture}
       onClick={handleClick}
+      onKeyDown={onKeyDown}
     >
       {children}
     </button>

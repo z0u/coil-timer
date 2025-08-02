@@ -1,14 +1,14 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
 import { Ellipsis, GitMerge, HelpCircle, Scan, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { JogDial, JogEvent } from './JogDial';
+import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
+import { TimerState } from './TimerState';
 import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
-import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minutes, Second, Seconds } from './time-utils';
-import { TimerState } from './TimerState';
 import { useAnimation } from './useAnimation';
 import { useDrawClockFace } from './useDrawClockFace';
 import { useMultiClick } from './useMultiClick';
@@ -130,6 +130,24 @@ const SpiralTimer = () => {
     }
   };
 
+  const handleJogKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    setIsActive(true);
+    switch (event.key) {
+      case 'ArrowUp':
+        addTime(event.shiftKey ? 1 * Hour : 5 * Minutes);
+        break;
+      case 'ArrowDown':
+        addTime(event.shiftKey ? -1 * Hour : -5 * Minutes);
+        break;
+      case 'ArrowRight':
+        addTime(event.shiftKey ? 5 * Minutes : 1 * Minute);
+        break;
+      case 'ArrowLeft':
+        addTime(event.shiftKey ? -5 * Minutes : -1 * Minute);
+        break;
+    }
+  };
+
   const handleBackgroundClicks = useMultiClick({
     indeterminate: () => setIsActive(true),
     single: () => setMustShowControls((value) => !value),
@@ -152,26 +170,31 @@ const SpiralTimer = () => {
       setIsActive(true);
       const delta = e.deltaY;
       // 1 minute per notch, invert for natural scroll
-      const change = (delta > 0 ? -30 : 30) * Seconds;
-      if (timerState.is === 'paused') {
-        const newTime = Math.max(0, timerState.remainingTime + change);
-        setTimerState({ ...timerState, remainingTime: newTime });
-      } else if (timerState.is === 'running') {
-        const remaining = timerState.endTime - Date.now();
-        const newRemaining = Math.max(0, remaining + change);
-        if (newRemaining <= 0) {
-          setTimerState({ is: 'paused', remainingTime: 0 });
-        } else {
-          setTimerState({ is: 'running', endTime: Date.now() + newRemaining });
-        }
-      } else if (timerState.is === 'interacting') {
-        // Do nothing: already dragging
-        setTimerState({ ...timerState });
-      }
+      addTime((delta > 0 ? -30 : 30) * Seconds);
     },
     [timerState],
   );
   useNonPassiveWheelHandler(container, handleWheel);
+
+  const addTime = (change: number) => {
+    if (timerState.is === 'interacting') {
+      // Do nothing: already dragging
+      setTimerState({ ...timerState });
+      return;
+    }
+    const remainingTime = timerState.is === 'paused' ? timerState.remainingTime : timerState.endTime - Date.now();
+    const newRemaininTime = math.clamp(remainingTime + change, 0, 24 * Hours);
+
+    if (timerState.is === 'paused') {
+      setTimerState({ ...timerState, remainingTime: newRemaininTime });
+    } else if (timerState.is === 'running') {
+      if (newRemaininTime <= 0) {
+        setTimerState({ is: 'paused', remainingTime: 0 });
+      } else {
+        setTimerState({ is: 'running', endTime: Date.now() + newRemaininTime });
+      }
+    }
+  };
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
   const isDimmed = !isHelpVisible && timerState.is === 'paused' && !isActive;
@@ -211,6 +234,7 @@ const SpiralTimer = () => {
           onJogStart={handleJogStart}
           onJogMove={handleJogMove}
           onJogEnd={handleJogEnd}
+          onKeyDown={handleJogKey}
         >
           <span className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
             <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
