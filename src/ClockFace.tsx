@@ -245,8 +245,11 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
       const isPrimary = i === 0;
 
       // Calculate proximity for alpha blending
-      const angleDist = math.angleDist(finalTrack.angle, angle);
-      const proximity = math.clamp(1 - angleDist / math.rad(35), 0, 1);
+      const angleDist = math.angleDist(
+        finalTrack.angle,
+        angle + math.TAU / 24, // Add a bit to brighten future ticks more
+      );
+      const proximity = math.clamp(1 - angleDist / math.rad(30), 0, 1);
 
       ctx.save();
       ctx.rotate(angle - math.PI); // Start from top
