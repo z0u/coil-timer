@@ -236,6 +236,12 @@ const SpiralTimer = () => {
       >
         <ClockFace
           ref={setClockFace}
+          className={clsx(
+            // These are queried by the clock face to theme the canvas
+            'stroke-red-500 dark:stroke-red-600', // Tracks
+            'text-gray-600 dark:text-gray-200', // Ticks
+            'bg-white dark:bg-black', // Background
+          )}
           initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
           onClockRadiusChange={setClockRadius}
         />
@@ -270,7 +276,7 @@ const SpiralTimer = () => {
             'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
             'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
             'leading-none font-[Inconsolata,monospace] ',
-            'text-gray-300 text-shadow-lg/30',
+            'text-gray-600 dark:text-gray-300 dark:text-shadow-lg/30',
             'transition-opacity duration-500',
             controlsAreVisible ? 'opacity-100' : 'opacity-0',
           )}
@@ -289,7 +295,7 @@ const SpiralTimer = () => {
             <span
               ref={setEndTimeEl}
               className={clsx(
-                'text-gray-400 before:text-gray-600',
+                'text-gray-500 dark:text-gray-400',
                 'transition-opacity duration-500 delay-2000',
                 timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
               )}

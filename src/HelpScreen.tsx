@@ -37,7 +37,7 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
     <div
       className={clsx(
         'absolute inset-0 z-1',
-        'text-white text-shadow-lg/30',
+        'text-black dark:text-white dark:text-shadow-lg/30',
         'transition-all duration-500',
         isHelpVisible ? 'opacity-100 backdrop-blur-xs' : 'opacity-0 backdrop-blur-[0]',
         'pointer-events-none',
@@ -46,9 +46,10 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
       <button
         ref={setCloseButton}
         aria-label="Dismiss help"
+        title="Dismiss"
         className={clsx(
           'absolute top-6 right-6',
-          'cursor-pointer text-gray-400',
+          'cursor-pointer text-gray-700 dark:text-gray-400',
           isHelpVisible && 'pointer-events-auto',
         )}
         onClick={onCloseClicked}
@@ -62,11 +63,10 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
           'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
           'w-(--clock-diameter) h-(--clock-diameter) breathe-animation',
           'flex flex-col items-center justify-center',
-          'text-white text-shadow-lg/30',
         )}
       >
         <div>
-          <h2 className="text-lg text-gray-300 mb-2">Clock face</h2>
+          <h2 className="text-lg text-gray-800 dark:text-gray-300 mb-2">Clock face</h2>
           <ul>
             <li>
               <strong>{device.isTouchDevice ? 'Tap' : 'Click'}:</strong> {isPaused ? 'resume' : 'pause'}
@@ -81,8 +81,8 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
         </div>
       </div>
       {/* Help for background */}
-      <div className={clsx('absolute top-6 left-6', 'text-white text-shadow-lg/30')}>
-        <h2 className="text-lg text-gray-300 mb-2">Background</h2>
+      <div className={clsx('absolute top-6 left-6')}>
+        <h2 className="text-lg text-gray-800 dark:text-gray-300 mb-2">Background</h2>
         <ul>
           <li>
             <strong>{device.isTouchDevice ? 'Tap' : 'Click'}:</strong> {controlsAreVisible ? 'hide' : 'show'} controls

@@ -1,9 +1,9 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { TailwindColorProbe, TailwindColors } from './TailwindColorProbe';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Hours } from './time-utils';
+import { useColorScheme } from './useColorScheme';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -39,17 +39,24 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
   ({ className, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+    const colorScheme = useColorScheme();
     const timeToDrawRef = useRef(initialTime);
 
-    const [twColors, setTwColors] = useState<TailwindColors>({
-      track: '#ef4444',
-      tick: '#fff',
-      bg: '#000',
-    });
+    const theme = useMemo(() => {
+      if (!canvas) return null;
+
+      const style = getComputedStyle(canvas);
+      return {
+        scheme: colorScheme,
+        stroke: style.stroke,
+        bg: style.backgroundColor,
+        text: style.color,
+      };
+    }, [canvas, colorScheme, className ?? '']);
 
     const drawClockFace = useCallback(() => {
       const ctx = canvas?.getContext('2d');
-      if (!canvas || !ctx || !dimensions) return;
+      if (!canvas || !ctx || !dimensions || !theme) return;
 
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.offsetWidth;
@@ -62,11 +69,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
         ctx.scale(dpr, dpr);
       }
 
-      ctx.clearRect(0, 0, width, height);
-
-      // Use theme colors from TailwindColorProbe
-      const trackColor = twColors.track;
-      const tickColor = twColors.tick;
+      ctx.fillStyle = theme.bg;
+      ctx.fillRect(0, 0, width, height);
 
       const tracks = getTracks(timeToDrawRef.current, CLOCK_DIAMETER, TRACK_SPACING, Hours);
       const finalTrack = tracks[tracks.length - 1];
@@ -78,12 +82,12 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
         // Use relative coordinates
         ctx.translate(center[0], center[1]);
         ctx.scale(dimensions.radius, dimensions.radius);
-        drawClockTicks(ctx, finalTrack, tickColor);
-        drawRevolutions(ctx, tracks, trackColor);
+        drawClockTicks(ctx, finalTrack, theme.text);
+        drawRevolutions(ctx, tracks, theme.stroke);
       } finally {
         ctx.restore();
       }
-    }, [canvas, dimensions]);
+    }, [canvas, dimensions, theme]);
 
     useImperativeHandle(
       ref,
@@ -117,7 +121,12 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
 
     return (
       <>
-        <TailwindColorProbe onColorsChange={setTwColors} />
+        {/* <ColorProbe
+          onColorChange={(theme) => {
+            console.log(theme);
+            if (theme) setTheme(theme);
+          }}
+        /> */}
         <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />
       </>
     );

@@ -27,7 +27,7 @@ type ToolbarButtonProps = ButtonProps | LinkProps;
 export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, ToolbarButtonProps>(
   ({ 'aria-label': ariaLabel, title, className, children, isVisible, onClick, ...props }, ref) => {
     const baseClasses = clsx(
-      'cursor-pointer text-gray-400',
+      'cursor-pointer text-gray-700 dark:text-gray-400',
       'transition-all duration-200 translate-x-[inherit]',
       isVisible == null ? 'opacity-[inherit]' : isVisible ? 'opacity-100' : 'opacity-0',
       'pointer-events-auto',
