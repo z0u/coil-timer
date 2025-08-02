@@ -65,8 +65,11 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
         canvas.width = width * dpr;
         canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
       }
+
+      // Reset transform and scale for device pixel ratio
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
 
       ctx.fillStyle = theme.bg;
       ctx.fillRect(0, 0, width, height);
