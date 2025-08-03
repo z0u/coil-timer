@@ -63,11 +63,11 @@ export const Toolbar = ({ isVisible, isOpen = true, onToggle, trigger, children,
     <nav
       data-toolbar
       className={clsx(
-        'absolute top-6 inset-x-6',
+        'absolute top-6 right-6 portrait:inset-x-6',
         'transition-opacity duration-500',
-        isVisible ? 'opacity-100' : 'opacity-0',
+        isVisible ? 'opacity-50' : 'opacity-0',
         'hover:opacity-100',
-        'flex flex-row-reverse gap-6',
+        'flex gap-6 flex-col portrait:flex-row-reverse',
         className,
       )}
     >

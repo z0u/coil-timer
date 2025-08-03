@@ -335,14 +335,6 @@ const SpiralTimer = () => {
         </ToolbarButton>
 
         <ToolbarButton
-          onClick={() => setIsHelpVisible(true)}
-          aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
-          title="Help"
-        >
-          <HelpCircle size={24} />
-        </ToolbarButton>
-
-        <ToolbarButton
           onClick={cycleColorScheme}
           aria-label={`Switch to ${scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'system' : 'light'} theme`}
           title="Toggle color scheme"
@@ -368,6 +360,14 @@ const SpiralTimer = () => {
               scheme.selected === 'auto' ? 'opacity-100' : 'opacity-0',
             )}
           />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => setIsHelpVisible(true)}
+          aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
+          title="Help"
+        >
+          <HelpCircle size={24} />
         </ToolbarButton>
       </Toolbar>
     </div>
