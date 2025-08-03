@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { Ellipsis, GitMerge, HelpCircle, Moon, Scan, Sun, SunMoon, X } from 'lucide-react';
+import { HelpCircle, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -8,7 +8,6 @@ import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
 import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
 import { TimerState } from './TimerState';
-import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
@@ -45,9 +44,7 @@ const SpiralTimer = () => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
   const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
-  const [isActive, setIsActive] = useTemporaryState(false, OVERLAY_TIMEOUT);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [clockRadius, setClockRadius] = useState<number | null>(null);
 
@@ -87,7 +84,7 @@ const SpiralTimer = () => {
 
   const runFrame = useCallback(() => {
     let remainingTime: number;
-    let endTime: number;
+    let endTime: number | null;
 
     if (timerState.is === 'interacting') {
       remainingTime = timerInteractionRef.current!.remainingTime;
@@ -168,7 +165,6 @@ const SpiralTimer = () => {
       return;
     }
 
-    setIsActive(true);
     switch (event.key) {
       case 'Enter':
       case ' ':
@@ -190,7 +186,6 @@ const SpiralTimer = () => {
   };
 
   const handleBackgroundClicks = useMultiClick({
-    indeterminate: () => setIsActive(true),
     single: () => setMustShowControls((value) => !value),
     double: () => toggleFullscreen(),
     interval: 250 * Milliseconds,
@@ -213,17 +208,15 @@ const SpiralTimer = () => {
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
-      setIsActive(true);
       const delta = e.deltaY;
       const change = e.shiftKey ? 5 * Minutes : 30 * Seconds;
       addTime(delta > 0 ? -change : change);
     },
-    [addTime, setIsActive],
+    [addTime],
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
-  const isDimmed = !isHelpVisible && timerState.is === 'paused' && !isActive;
 
   return (
     <div
@@ -233,14 +226,7 @@ const SpiralTimer = () => {
       onClick={handleBackgroundClicks}
     >
       {/* Clock face */}
-      <div
-        className={clsx(
-          'w-full h-full',
-          'breathe-animation',
-          'transition-opacity',
-          isDimmed ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-1000',
-        )}
-      >
+      <div className={clsx('w-full h-full', 'breathe-animation', 'transition-opacity')}>
         {scheme.effective && (
           <ClockFace
             ref={setClockFace}
@@ -313,6 +299,17 @@ const SpiralTimer = () => {
               --
             </span>
           </span>
+          <span className="block h-0 text-[calc(min(5vh,5vw))]">
+            <span
+              className={clsx(
+                'text-gray-500 dark:text-gray-400',
+                'transition-opacity duration-500',
+                timerState.is === 'paused' ? 'opacity-100 delay-2000' : 'opacity-0',
+              )}
+            >
+              <Pause className="inline" />
+            </span>
+          </span>
         </JogDial>
       </div>
 
@@ -328,31 +325,13 @@ const SpiralTimer = () => {
       />
 
       {/* Toolbar top */}
-      <Toolbar
-        isVisible={controlsAreVisible}
-        isOpen={isMenuVisible}
-        onToggle={() => setIsMenuVisible((visible) => !visible)}
-        trigger={
-          <ToggleButton
-            isToggled={isMenuVisible}
-            onToggle={() => setIsMenuVisible((visible) => !visible)}
-            aria-label={isMenuVisible ? 'Hide menu' : 'Show menu'}
-            title="Menu"
-            defaultIcon={<Ellipsis size={24} />}
-            toggledIcon={<X size={24} />}
-          />
-        }
-      >
+      <Toolbar isVisible={controlsAreVisible}>
         <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
           onClick={toggleFullscreen}
         >
           <Scan size={24} />
-        </ToolbarButton>
-
-        <ToolbarButton href="https://github.com/z0u/coil-timer" aria-label="Source code on GitHub" title="Source code">
-          <GitMerge size={24} />
         </ToolbarButton>
 
         <ToolbarButton

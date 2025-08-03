@@ -3,21 +3,21 @@ import { ReactNode, useEffect, useRef } from 'react';
 
 interface ToolbarProps {
   isVisible: boolean;
-  isOpen: boolean;
-  onToggle: () => void;
-  trigger: ReactNode;
+  isOpen?: boolean;
+  onToggle?: () => void;
+  trigger?: ReactNode;
   children: ReactNode;
   className?: string;
 }
 
-export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, className }: ToolbarProps) => {
+export const Toolbar = ({ isVisible, isOpen = true, onToggle, trigger, children, className }: ToolbarProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
 
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onToggle();
+        onToggle?.();
         // Return focus to trigger button - find the button inside the trigger div
         const button = triggerRef.current?.querySelector('button');
         button?.focus();
@@ -40,14 +40,14 @@ export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, classN
       if (isOpen) {
         // Close if clicking outside the toolbar
         if (!toolbarElement) {
-          onToggle();
+          onToggle?.();
         }
         // Close if clicking on a menu item (but not the trigger button)
         else if (toolbarElement && triggerElement && !triggerElement.contains(target)) {
           // Check if the clicked element is a button or link (menu item)
           const isMenuItem = target.closest('button, a');
           if (isMenuItem) {
-            onToggle();
+            onToggle?.();
           }
         }
       }
@@ -66,6 +66,7 @@ export const Toolbar = ({ isVisible, isOpen, onToggle, trigger, children, classN
         'absolute top-6 inset-x-6',
         'transition-opacity duration-500',
         isVisible ? 'opacity-100' : 'opacity-0',
+        'hover:opacity-100',
         'flex flex-row-reverse gap-6',
         className,
       )}
