@@ -8,18 +8,21 @@ export interface VibrationActions {
 export const useVibration = (): VibrationActions => {
   const isSupported = 'vibrate' in navigator;
 
-  const vibrate = useCallback((pattern: number | number[] = 200) => {
-    if (isSupported) {
-      try {
-        navigator.vibrate(pattern);
-      } catch (error) {
-        console.warn('Vibration failed:', error);
+  const vibrate = useCallback(
+    (pattern: number | number[] = 200) => {
+      if (isSupported) {
+        try {
+          navigator.vibrate(pattern);
+        } catch (error) {
+          console.warn('Vibration failed:', error);
+        }
       }
-    }
-  }, [isSupported]);
+    },
+    [isSupported],
+  );
 
   return {
     vibrate,
-    isSupported
+    isSupported,
   };
 };

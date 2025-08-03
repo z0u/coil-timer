@@ -66,16 +66,16 @@ const SpiralTimer = () => {
 
   // Handle visibility changes to schedule/reschedule notifications
   useEffect(() => {
-    if (timerState.is === 'running' && notifications.isEnabled) {
+    if (timerState.is === 'running' && notifications.isEffectivelyEnabled) {
       const remainingTime = timerState.endTime - Date.now();
-      
+
       if (!isVisible && remainingTime > 0) {
         // App became hidden while timer is running - reschedule completion notification
         notifications.scheduleNotification(
           'timer-completion',
           'Timer Complete',
           'Your timer has finished',
-          remainingTime
+          remainingTime,
         );
       } else if (isVisible) {
         // App became visible - cancel scheduled notifications since app can handle them directly
@@ -97,45 +97,26 @@ const SpiralTimer = () => {
       if (previousState === 'running' && state === 'paused') {
         // Vibrate when transitioning from running to paused
         vibrate([200, 100, 200]);
-        
-        // Cancel any scheduled notifications since timer is now paused
-        notifications.cancelNotification('timer-completion');
-        
-        // Show notification if app is not visible
-        if (!isVisible && notifications.isEnabled) {
-          const timeRemaining = Math.max(0, newRemainingTime);
-          if (timeRemaining > 0) {
-            notifications.showNotification(
-              'Timer Paused',
-              `${formatDuration(math.roundTo(timeRemaining, Minutes))} remaining`
-            );
-          } else {
-            notifications.showNotification(
-              'Timer Complete',
-              'Your timer has finished'
-            );
-          }
-        }
       }
 
       if (state === 'running') {
         const endTime = Date.now() + newRemainingTime;
         setTimerState({ is: 'running', endTime });
-        
+
         // Schedule completion notification if notifications are enabled
         if (notifications.isEnabled && newRemainingTime > 0) {
           notifications.scheduleNotification(
             'timer-completion',
             'Timer Complete',
             'Your timer has finished',
-            newRemainingTime
+            newRemainingTime,
           );
         }
       } else {
         setTimerState({ is: 'paused', remainingTime: newRemainingTime });
       }
     },
-    [setTimerState, vibrate, isVisible, notifications],
+    [setTimerState, vibrate, notifications],
   );
 
   const toggleRunningOrPaused = useCallback(() => {
@@ -429,13 +410,14 @@ const SpiralTimer = () => {
         </ToolbarButton>
 
         <ToggleButton
-          isToggled={notifications.isEnabled}
+          isToggled={notifications.isEffectivelyEnabled}
           onToggle={notifications.toggleEnabled}
           isVisible={controlsAreVisible}
-          aria-label={notifications.isEnabled ? 'Disable notifications' : 'Enable notifications'}
+          aria-label={notifications.isEffectivelyEnabled ? 'Disable notifications' : 'Enable notifications'}
           title="Toggle notifications"
           defaultIcon={<BellOff size={24} />}
           toggledIcon={<Bell size={24} />}
+          disabled={notifications.permission === 'denied'}
         />
 
         <ToolbarButton

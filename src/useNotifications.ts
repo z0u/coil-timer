@@ -1,129 +1,105 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import z from 'zod';
+import { useLocalStorage } from './useLocalStorage';
 
 export interface NotificationPermissionState {
   permission: NotificationPermission;
   isSupported: boolean;
   isEnabled: boolean;
+  isEffectivelyEnabled: boolean;
 }
 
 export interface NotificationActions {
-  requestPermission: () => Promise<boolean>;
   toggleEnabled: () => void;
-  showNotification: (title: string, body: string) => void;
-  scheduleNotification: (id: string, title: string, body: string, delay: number) => void;
+  scheduleNotification: (id: string, title: string, body: string, delay?: number) => void;
   cancelNotification: (id: string) => void;
 }
 
 const NOTIFICATION_PREFERENCE_KEY = 'coil-timer-notifications-enabled';
 
 export const useNotifications = (): NotificationPermissionState & NotificationActions => {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [isEnabled, setIsEnabled] = useState<boolean>(false);
-
   const isSupported = 'Notification' in window && 'serviceWorker' in navigator;
+  const [permission, setPermission] = useState<NotificationPermission>(Notification.permission);
+  const [isEnabled, setIsEnabled] = useLocalStorage(NOTIFICATION_PREFERENCE_KEY, z.boolean(), false);
 
-  // Load stored preference on mount
-  useEffect(() => {
-    if (isSupported) {
-      setPermission(Notification.permission);
-      const stored = localStorage.getItem(NOTIFICATION_PREFERENCE_KEY);
-      setIsEnabled(stored === 'true');
+  const isEffectivelyEnabled = isSupported && permission === 'granted' && isEnabled;
+
+  const requestPermission = useCallback(async () => {
+    if (!isSupported) {
+      console.error('Notifications are not supported on this platform');
+      return 'denied';
     }
+
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    return result;
   }, [isSupported]);
 
-  const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) return false;
-
-    try {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      
-      if (result === 'granted') {
-        setIsEnabled(true);
-        localStorage.setItem(NOTIFICATION_PREFERENCE_KEY, 'true');
-        return true;
-      } else {
-        setIsEnabled(false);
-        localStorage.setItem(NOTIFICATION_PREFERENCE_KEY, 'false');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return false;
-    }
-  }, [isSupported]);
-
-  const toggleEnabled = useCallback(() => {
+  const toggleEnabled = useCallback(async () => {
     if (!isSupported) return;
 
-    if (permission === 'granted') {
-      const newEnabled = !isEnabled;
-      setIsEnabled(newEnabled);
-      localStorage.setItem(NOTIFICATION_PREFERENCE_KEY, newEnabled.toString());
-    } else if (permission === 'default') {
-      // Request permission when user tries to enable
-      requestPermission();
-    }
-  }, [isSupported, permission, isEnabled, requestPermission]);
-
-  const showNotification = useCallback((title: string, body: string) => {
-    if (!isSupported || !isEnabled || permission !== 'granted') {
+    if (isEffectivelyEnabled) {
+      // Don't need permission to disable
+      setIsEnabled(false);
       return;
     }
 
-    // Try to use service worker for background notifications
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        data: { title, body }
-      });
-    } else {
-      // Fallback to regular notification API
-      new Notification(title, {
-        body,
-        icon: '/icon-192.svg',
-        badge: '/icon-192.svg',
-        tag: 'coil-timer-notification'
-      });
-    }
-  }, [isSupported, isEnabled, permission]);
-
-  const scheduleNotification = useCallback((id: string, title: string, body: string, delay: number) => {
-    if (!isSupported || !isEnabled || permission !== 'granted') {
-      return;
+    let _permission = permission;
+    if (_permission === 'default') {
+      _permission = await requestPermission();
     }
 
-    // Send scheduling message to service worker
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SCHEDULE_NOTIFICATION',
-        data: { id, title, body, delay }
-      });
+    if (_permission === 'granted') {
+      setIsEnabled(true);
     }
-  }, [isSupported, isEnabled, permission]);
+  }, [isSupported, isEffectivelyEnabled, permission, setIsEnabled, requestPermission]);
 
-  const cancelNotification = useCallback((id: string) => {
-    if (!isSupported) {
-      return;
-    }
+  const scheduleNotification = useCallback(
+    (id: string, title: string, body: string, delay?: number) => {
+      if (!isEffectivelyEnabled) {
+        console.log(`Not scheduling notification ${title}: notifications are disabled.`);
+        return;
+      }
+      _scheduleNotification(id, title, body, delay ?? 0);
+    },
+    [isEffectivelyEnabled],
+  );
 
-    // Send cancellation message to service worker
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'CANCEL_NOTIFICATION',
-        data: { id }
-      });
-    }
-  }, [isSupported]);
+  const cancelNotification = useCallback(
+    (id: string) => {
+      if (!isSupported) {
+        return;
+      }
+      _cancelNotification(id);
+    },
+    [isSupported],
+  );
 
   return {
     permission,
     isSupported,
     isEnabled,
-    requestPermission,
+    isEffectivelyEnabled,
     toggleEnabled,
-    showNotification,
     scheduleNotification,
-    cancelNotification
+    cancelNotification,
   };
+};
+
+const _scheduleNotification = (id: string, title: string, body: string, delay: number) => {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SCHEDULE_NOTIFICATION',
+      data: { id, title, body, delay },
+    });
+  }
+};
+
+const _cancelNotification = (id: string) => {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'CANCEL_NOTIFICATION',
+      data: { id },
+    });
+  }
 };

@@ -5,6 +5,7 @@ interface BaseToolbarButtonProps {
   'aria-label': string;
   title: string;
   className?: string;
+  disabled?: boolean;
   children: ReactNode;
   isVisible?: boolean | null;
   onClick?: (e: React.MouseEvent) => void;
@@ -25,17 +26,17 @@ interface LinkProps extends BaseToolbarButtonProps {
 type ToolbarButtonProps = ButtonProps | LinkProps;
 
 export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, ToolbarButtonProps>(
-  ({ 'aria-label': ariaLabel, title, className, children, isVisible, onClick, ...props }, ref) => {
+  ({ 'aria-label': ariaLabel, title, className, disabled = false, children, isVisible, onClick, ...props }, ref) => {
     const baseClasses = clsx(
       'cursor-pointer text-gray-700 dark:text-gray-400',
       'transition-all duration-200 translate-x-[inherit]',
-      isVisible == null ? 'opacity-[inherit]' : isVisible ? 'opacity-100' : 'opacity-0',
-      'pointer-events-auto',
+      isVisible == null ? 'opacity-[inherit]' : isVisible ? (disabled ? 'opacity-50' : 'opacity-100') : 'opacity-0',
+      disabled ? 'pointer-events-none' : 'pointer-events-auto',
     );
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      onClick?.(e);
+      if (!disabled) onClick?.(e);
     };
 
     if ('href' in props) {
@@ -47,9 +48,11 @@ export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, T
           title={title}
           className={clsx(baseClasses, className)}
           onClick={handleClick}
-          href={href}
+          aria-disabled={disabled}
+          href={disabled ? undefined : href}
           target={target}
           rel={rel}
+          tabIndex={disabled ? -1 : 0}
         >
           {children}
         </a>
@@ -62,6 +65,8 @@ export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, T
         aria-label={ariaLabel}
         title={title}
         className={clsx(baseClasses, className)}
+        disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
         onClick={handleClick}
       >
         {children}

@@ -31,7 +31,7 @@ self.addEventListener('notificationclick', (event) => {
       if (self.clients.openWindow) {
         return self.clients.openWindow('/');
       }
-    })
+    }),
   );
 });
 
@@ -41,10 +41,12 @@ let scheduledNotifications = new Map();
 // Handle background message from main thread
 self.addEventListener('message', (event) => {
   const { type, data } = event.data;
-  
+  console.log(`message ${type}`);
+
   if (type === 'SHOW_NOTIFICATION') {
     const { title, body, icon } = data;
-    
+    console.log(`showing notification: ${title} / ${body}`);
+
     self.registration.showNotification(title, {
       body,
       icon: icon || '/icon-192.svg',
@@ -54,18 +56,18 @@ self.addEventListener('message', (event) => {
       actions: [
         {
           action: 'focus',
-          title: 'Open Timer'
-        }
-      ]
+          title: 'Open Timer',
+        },
+      ],
     });
   } else if (type === 'SCHEDULE_NOTIFICATION') {
     const { id, title, body, delay } = data;
-    
+    console.log(`scheduling notification: ${title} / ${body} @ ${delay}`);
+
     // Clear any existing scheduled notification with this id
-    if (scheduledNotifications.has(id)) {
-      clearTimeout(scheduledNotifications.get(id));
-    }
-    
+    clearTimeout(scheduledNotifications.get(id) ?? 0);
+    scheduledNotifications.delete(id);
+
     // Schedule the notification
     const timeoutId = setTimeout(() => {
       self.registration.showNotification(title, {
@@ -77,20 +79,19 @@ self.addEventListener('message', (event) => {
         actions: [
           {
             action: 'focus',
-            title: 'Open Timer'
-          }
-        ]
+            title: 'Open Timer',
+          },
+        ],
       });
       scheduledNotifications.delete(id);
     }, delay);
-    
+
     scheduledNotifications.set(id, timeoutId);
   } else if (type === 'CANCEL_NOTIFICATION') {
     const { id } = data;
-    
-    if (scheduledNotifications.has(id)) {
-      clearTimeout(scheduledNotifications.get(id));
-      scheduledNotifications.delete(id);
-    }
+    console.log(`cancelling notification: ${id}`);
+
+    clearTimeout(scheduledNotifications.get(id) ?? 0);
+    scheduledNotifications.delete(id);
   }
 });
