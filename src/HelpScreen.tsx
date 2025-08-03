@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { GitMerge, X } from 'lucide-react';
+import { GitMerge, RefreshCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 
@@ -105,11 +105,25 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
       </div>
 
       {/* Links */}
-      <div className={clsx('absolute bottom-6 inset-x-6', 'flex flex-col items-center justify-center')}>
+      <div className={clsx('absolute bottom-6 inset-x-6', 'flex flex-col items-start justify-center')}>
         <h2 className="sr-only">Links</h2>
-        <ul className="contents">
-          <li>
-            <a href="https://github.com/z0u/coil-timer" className="pointer-events-auto hover:underline">
+        <ul className="content">
+          <li className="content">
+            <button
+              type="button"
+              className="pointer-events-auto cursor-pointer py-2"
+              onClick={() => window.location.reload()}
+              title="Refresh the page to update the app"
+            >
+              <RefreshCcw className="inline mx-2" />
+              Refresh app
+            </button>
+          </li>
+          <li className="content">
+            <a
+              href="https://github.com/z0u/coil-timer"
+              className="inline-block pointer-events-auto hover:underline py-2"
+            >
               <GitMerge className="inline mx-2" />
               Source code on GitHub
             </a>
