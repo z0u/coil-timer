@@ -104,7 +104,7 @@ const SpiralTimer = () => {
         setTimerState({ is: 'running', endTime });
 
         // Schedule completion notification if notifications are enabled
-        if (notifications.isEnabled && newRemainingTime > 0) {
+        if (notifications.isEffectivelyEnabled && newRemainingTime > 0) {
           notifications.scheduleNotification(
             'timer-completion',
             'Timer Complete',

@@ -10,12 +10,15 @@ export const useVibration = (): VibrationActions => {
 
   const vibrate = useCallback(
     (pattern: number | number[] = 200) => {
-      if (isSupported) {
-        try {
-          navigator.vibrate(pattern);
-        } catch (error) {
-          console.warn('Vibration failed:', error);
-        }
+      if (!isSupported) {
+        console.log('Not vibrating: Not supported.');
+        return;
+      }
+      try {
+        console.log('Vibrating');
+        navigator.vibrate(pattern);
+      } catch (error) {
+        console.warn('Vibration failed:', error);
       }
     },
     [isSupported],
