@@ -64,6 +64,26 @@ const SpiralTimer = () => {
     setMustShowControls(true);
   }, [timerState.is, setMustShowControls]);
 
+  // Handle visibility changes to schedule/reschedule notifications
+  useEffect(() => {
+    if (timerState.is === 'running' && notifications.isEnabled) {
+      const remainingTime = timerState.endTime - Date.now();
+      
+      if (!isVisible && remainingTime > 0) {
+        // App became hidden while timer is running - reschedule completion notification
+        notifications.scheduleNotification(
+          'timer-completion',
+          'Timer Complete',
+          'Your timer has finished',
+          remainingTime
+        );
+      } else if (isVisible) {
+        // App became visible - cancel scheduled notifications since app can handle them directly
+        notifications.cancelNotification('timer-completion');
+      }
+    }
+  }, [isVisible, timerState, notifications]);
+
   const clampTime = (time: number) => math.clamp(time, 0, 24 * Hours);
 
   const setRunningOrPaused = useCallback(
@@ -77,6 +97,9 @@ const SpiralTimer = () => {
       if (previousState === 'running' && state === 'paused') {
         // Vibrate when transitioning from running to paused
         vibrate([200, 100, 200]);
+        
+        // Cancel any scheduled notifications since timer is now paused
+        notifications.cancelNotification('timer-completion');
         
         // Show notification if app is not visible
         if (!isVisible && notifications.isEnabled) {
@@ -96,7 +119,18 @@ const SpiralTimer = () => {
       }
 
       if (state === 'running') {
-        setTimerState({ is: 'running', endTime: Date.now() + newRemainingTime });
+        const endTime = Date.now() + newRemainingTime;
+        setTimerState({ is: 'running', endTime });
+        
+        // Schedule completion notification if notifications are enabled
+        if (notifications.isEnabled && newRemainingTime > 0) {
+          notifications.scheduleNotification(
+            'timer-completion',
+            'Timer Complete',
+            'Your timer has finished',
+            newRemainingTime
+          );
+        }
       } else {
         setTimerState({ is: 'paused', remainingTime: newRemainingTime });
       }

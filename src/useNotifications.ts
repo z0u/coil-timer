@@ -10,6 +10,8 @@ export interface NotificationActions {
   requestPermission: () => Promise<boolean>;
   toggleEnabled: () => void;
   showNotification: (title: string, body: string) => void;
+  scheduleNotification: (id: string, title: string, body: string, delay: number) => void;
+  cancelNotification: (id: string) => void;
 }
 
 const NOTIFICATION_PREFERENCE_KEY = 'coil-timer-notifications-enabled';
@@ -86,12 +88,42 @@ export const useNotifications = (): NotificationPermissionState & NotificationAc
     }
   }, [isSupported, isEnabled, permission]);
 
+  const scheduleNotification = useCallback((id: string, title: string, body: string, delay: number) => {
+    if (!isSupported || !isEnabled || permission !== 'granted') {
+      return;
+    }
+
+    // Send scheduling message to service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SCHEDULE_NOTIFICATION',
+        data: { id, title, body, delay }
+      });
+    }
+  }, [isSupported, isEnabled, permission]);
+
+  const cancelNotification = useCallback((id: string) => {
+    if (!isSupported) {
+      return;
+    }
+
+    // Send cancellation message to service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CANCEL_NOTIFICATION',
+        data: { id }
+      });
+    }
+  }, [isSupported]);
+
   return {
     permission,
     isSupported,
     isEnabled,
     requestPermission,
     toggleEnabled,
-    showNotification
+    showNotification,
+    scheduleNotification,
+    cancelNotification
   };
 };

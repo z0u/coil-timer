@@ -35,6 +35,9 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Store scheduled notifications
+let scheduledNotifications = new Map();
+
 // Handle background message from main thread
 self.addEventListener('message', (event) => {
   const { type, data } = event.data;
@@ -55,5 +58,39 @@ self.addEventListener('message', (event) => {
         }
       ]
     });
+  } else if (type === 'SCHEDULE_NOTIFICATION') {
+    const { id, title, body, delay } = data;
+    
+    // Clear any existing scheduled notification with this id
+    if (scheduledNotifications.has(id)) {
+      clearTimeout(scheduledNotifications.get(id));
+    }
+    
+    // Schedule the notification
+    const timeoutId = setTimeout(() => {
+      self.registration.showNotification(title, {
+        body,
+        icon: '/icon-192.svg',
+        badge: '/icon-192.svg',
+        tag: 'coil-timer-notification',
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'focus',
+            title: 'Open Timer'
+          }
+        ]
+      });
+      scheduledNotifications.delete(id);
+    }, delay);
+    
+    scheduledNotifications.set(id, timeoutId);
+  } else if (type === 'CANCEL_NOTIFICATION') {
+    const { id } = data;
+    
+    if (scheduledNotifications.has(id)) {
+      clearTimeout(scheduledNotifications.get(id));
+      scheduledNotifications.delete(id);
+    }
   }
 });
