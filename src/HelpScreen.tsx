@@ -60,8 +60,7 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
       {/* Help for clock face */}
       <div
         className={clsx(
-          'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-          'w-(--clock-diameter) h-(--clock-diameter) breathe-animation',
+          'w-full h-full',
           'flex flex-col items-center justify-center',
         )}
       >
