@@ -60,7 +60,7 @@ export const HelpScreen = ({ isHelpVisible, isPaused, controlsAreVisible, onClos
       {/* Help for clock face */}
       <div
         className={clsx(
-          'w-full h-full',
+          'w-full h-full', // matches clock face
           'flex flex-col items-center justify-center',
         )}
       >
