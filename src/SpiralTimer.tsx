@@ -307,7 +307,7 @@ const SpiralTimer = () => {
                 timerState.is === 'paused' ? 'opacity-100 delay-2000' : 'opacity-0',
               )}
             >
-              <Pause className="inline" />
+              <Pause className="inline" size="1em" />
             </span>
           </span>
         </JogDial>
