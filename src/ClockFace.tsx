@@ -12,9 +12,13 @@ const TICK_OUTER_DIA = 0.9;
 // To prevent screen burn-in, all of these values must be less than the largest scale factor in the `breathe` animation.
 // E.g. if the largest scale is 1.05, then these must all be less than 0.05.
 // See style.css.
+const PRIMARY_TICK_LENGTH = 0.028;
+const PRIMARY_TICK_WIDTH = 0.032;
+const PRIMARY_TICK_LENGTH_FINISHED = 0.049;
+const PRIMARY_TICK_WIDTH_FINISHED = 0.016;
 const MAJOR_TICK_LENGTH = 0.028;
-const MINOR_TICK_LENGTH = 0.016;
 const MAJOR_TICK_WIDTH = 0.024;
+const MINOR_TICK_LENGTH = 0.016;
 const MINOR_TICK_WIDTH = 0.016;
 const TRACK_WIDTH = 0.025;
 
@@ -72,8 +76,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           // Use relative coordinates
           ctx.translate(center[0], center[1]);
           ctx.scale(dimensions.radius, dimensions.radius);
-          drawClockTicks(ctx, finalTrack, theme.text);
           drawRevolutions(ctx, tracks, theme.stroke);
+          drawClockTicks(ctx, finalTrack, theme.text);
         } finally {
           ctx.restore();
         }
@@ -218,6 +222,8 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    const hasFinished = finalTrack.rev === 0 && finalTrack.angle === 0;
+
     for (let i = 0; i < 12; i++) {
       const angle = (math.TAU / 12) * i;
       const isMajor = i % 3 === 0;
@@ -243,14 +249,21 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
       ctx.globalAlpha = isPrimary ? 1 : proximity * 0.9;
       if (isPrimary) {
         // Draw a triangle pointing in
+        const length = hasFinished ? PRIMARY_TICK_LENGTH_FINISHED : PRIMARY_TICK_LENGTH;
+        const width = hasFinished ? PRIMARY_TICK_WIDTH_FINISHED : PRIMARY_TICK_WIDTH;
         ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
         ctx.beginPath();
-        ctx.moveTo(0, TICK_OUTER_DIA - MAJOR_TICK_LENGTH);
-        ctx.lineTo(-MAJOR_TICK_WIDTH, TICK_OUTER_DIA);
-        ctx.lineTo(MAJOR_TICK_WIDTH, TICK_OUTER_DIA);
+        ctx.moveTo(0, TICK_OUTER_DIA - length);
+        ctx.lineTo(-width / 2, TICK_OUTER_DIA);
+        ctx.lineTo(width / 2, TICK_OUTER_DIA);
         ctx.closePath();
         ctx.stroke();
         ctx.fill();
+        if (finalTrack.rev === 0 && finalTrack.angle === 0) {
+          // Timer has finished. Draw a dot underneath the triangle to make it look like an exclamation mark
+          ctx.arc(0, CLOCK_DIAMETER, PRIMARY_TICK_WIDTH_FINISHED, 0, math.TAU);
+          ctx.fill();
+        }
       } else {
         // Draw a radial line
         const length = isMajor ? MAJOR_TICK_LENGTH : MINOR_TICK_LENGTH;
