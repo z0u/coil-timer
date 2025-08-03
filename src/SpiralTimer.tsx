@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { HelpCircle, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
+import { Bell, BellOff, HelpCircle, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -8,6 +8,7 @@ import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
 import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
 import { TimerState } from './TimerState';
+import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
@@ -15,8 +16,11 @@ import { useColorScheme } from './useColorScheme';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
+import { useNotifications } from './useNotifications';
 import { usePersistentTimerState } from './usePersistentTimerState';
 import { useTemporaryState } from './useTemporaryState';
+import { useVibration } from './useVibration';
+import { useVisibility } from './useVisibility';
 import { useWakeLock } from './useWakeLock';
 
 // Interaction state for timer duration adjustments
@@ -38,6 +42,9 @@ const SpiralTimer = () => {
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
   const [timerState, setTimerState] = usePersistentTimerState();
   const scheme = useColorScheme();
+  const isVisible = useVisibility();
+  const { vibrate } = useVibration();
+  const notifications = useNotifications();
 
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
@@ -60,10 +67,32 @@ const SpiralTimer = () => {
   const clampTime = (time: number) => math.clamp(time, 0, 24 * Hours);
 
   const setRunningOrPaused = useCallback(
-    (state: 'running' | 'paused', remainingTime: number) => {
+    (state: 'running' | 'paused', remainingTime: number, previousState?: 'running' | 'paused') => {
       const newRemainingTime = clampTime(remainingTime);
       if (newRemainingTime <= 0 && state === 'running') {
         state = 'paused';
+      }
+
+      // Handle vibration and notifications for state transitions
+      if (previousState === 'running' && state === 'paused') {
+        // Vibrate when transitioning from running to paused
+        vibrate([200, 100, 200]);
+        
+        // Show notification if app is not visible
+        if (!isVisible && notifications.isEnabled) {
+          const timeRemaining = Math.max(0, newRemainingTime);
+          if (timeRemaining > 0) {
+            notifications.showNotification(
+              'Timer Paused',
+              `${formatDuration(math.roundTo(timeRemaining, Minutes))} remaining`
+            );
+          } else {
+            notifications.showNotification(
+              'Timer Complete',
+              'Your timer has finished'
+            );
+          }
+        }
       }
 
       if (state === 'running') {
@@ -72,14 +101,15 @@ const SpiralTimer = () => {
         setTimerState({ is: 'paused', remainingTime: newRemainingTime });
       }
     },
-    [setTimerState],
+    [setTimerState, vibrate, isVisible, notifications],
   );
 
   const toggleRunningOrPaused = useCallback(() => {
     if (timerState.is === 'interacting') return;
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
+    const currentState = timerState.is;
     const nextState = timerState.is === 'running' ? 'paused' : 'running';
-    setRunningOrPaused(nextState, remainingTime);
+    setRunningOrPaused(nextState, remainingTime, currentState);
   }, [timerState, setRunningOrPaused]);
 
   const runFrame = useCallback(() => {
@@ -93,7 +123,8 @@ const SpiralTimer = () => {
       endTime = timerState.endTime;
       remainingTime = timerState.endTime - Date.now();
       if (remainingTime <= 0) {
-        setTimerState({ is: 'paused', remainingTime: 0 });
+        // Timer completed - pass 'running' as previous state for notifications/vibration
+        setRunningOrPaused('paused', 0, 'running');
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'paused') {
@@ -106,7 +137,7 @@ const SpiralTimer = () => {
     if (clockFace) clockFace.setTime(remainingTime);
     if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
     if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-  }, [clockFace, timeEl, endTimeEl, timerState, setTimerState]);
+  }, [clockFace, timeEl, endTimeEl, timerState, setRunningOrPaused]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
 
@@ -154,8 +185,9 @@ const SpiralTimer = () => {
       setRunningOrPaused(timerState.was, newRemainingTime);
     } else {
       // If tapped, toggle between running and paused
+      const currentState = timerState.was;
       const nextState = timerState.was === 'running' ? 'paused' : 'running';
-      setRunningOrPaused(nextState, remainingTime);
+      setRunningOrPaused(nextState, remainingTime, currentState);
     }
   };
 
@@ -361,6 +393,16 @@ const SpiralTimer = () => {
             )}
           />
         </ToolbarButton>
+
+        <ToggleButton
+          isToggled={notifications.isEnabled}
+          onToggle={notifications.toggleEnabled}
+          isVisible={controlsAreVisible}
+          aria-label={notifications.isEnabled ? 'Disable notifications' : 'Enable notifications'}
+          title="Toggle notifications"
+          defaultIcon={<BellOff size={24} />}
+          toggledIcon={<Bell size={24} />}
+        />
 
         <ToolbarButton
           onClick={() => setIsHelpVisible(true)}
