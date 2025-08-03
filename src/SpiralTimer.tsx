@@ -6,7 +6,19 @@ import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
 import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
-import { formatDuration, formatTime, Hour, Hours, Milliseconds, Minute, Minutes, Second, Seconds } from './time-utils';
+import {
+  formatDuration,
+  formatDurationSr,
+  formatTime,
+  formatTimeSr,
+  Hour,
+  Hours,
+  Milliseconds,
+  Minute,
+  Minutes,
+  Second,
+  Seconds,
+} from './time-utils';
 import { TimerState } from './TimerState';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
@@ -39,6 +51,7 @@ const SpiralTimer = () => {
   const [timerState, setTimerState] = usePersistentTimerState();
   const scheme = useColorScheme();
 
+  const [srTimeEl, setSrTimeEl] = useState<HTMLElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -105,9 +118,16 @@ const SpiralTimer = () => {
     }
 
     if (clockFace) clockFace.setTime(remainingTime);
-    if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
-    if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-  }, [clockFace, timeEl, endTimeEl, timerState, setRunningOrPaused]);
+    if (srTimeEl) {
+      srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
+    }
+    if (timeEl) {
+      timeEl.textContent = zerosAsOs(formatDuration(math.roundTo(remainingTime, Minutes)));
+    }
+    if (endTimeEl) {
+      endTimeEl.textContent = zerosAsOs(formatTime(endTime));
+    }
+  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setRunningOrPaused]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
 
@@ -282,13 +302,16 @@ const SpiralTimer = () => {
           onJogEnd={handleJogEnd}
           onKeyDown={handleJogKey}
         >
-          <span className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
-            <span ref={setTimeEl} aria-live="polite" aria-atomic="true" />
+          {/* Use a live screen reader element for the time */}
+          <span ref={setSrTimeEl} className="sr-only" aria-live="polite" aria-atomic="true"></span>
+          {/* Use an element that is hidden from screen readers for the stylized display */}
+          <span aria-hidden="true" className="flex items-center justify-center text-[calc(min(10vh,10vw))]">
+            <span ref={setTimeEl} />
             <span className="inline-block w-0 flex items-baseline">
               <AnimatedColon isRunning={timerState.is === 'running'} />
             </span>
           </span>
-          <span className="block h-0 text-[calc(min(5vh,5vw))]">
+          <span aria-hidden="true" className="block h-0 text-[calc(min(5vh,5vw))]">
             <span
               ref={setEndTimeEl}
               className={clsx(
@@ -376,3 +399,5 @@ const SpiralTimer = () => {
 };
 
 export default SpiralTimer;
+
+const zerosAsOs = (text: string) => text.replaceAll('0', 'O');

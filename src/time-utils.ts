@@ -24,3 +24,24 @@ export const formatTime = (timestamp: number) => {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 };
+
+export const formatDurationSr = (ms: number) => {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+
+  if (hours > 0) {
+    // e.g. "1 hour 05 minutes" in user's locale
+    return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(hours, 'hours');
+  }
+  // e.g. "5 minutes" in user's locale
+  return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(minutes, 'minute');
+};
+
+export const formatTimeSr = (timestamp: number) => {
+  // e.g. "4:05 PM" in user's locale
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+};
