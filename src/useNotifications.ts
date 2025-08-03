@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import z from 'zod';
 import { useLocalStorage } from './useLocalStorage';
 
@@ -51,6 +51,7 @@ export const useNotifications = (): NotificationPermissionState & NotificationAc
 
     if (_permission === 'granted') {
       setIsEnabled(true);
+      _scheduleNotification('notifictions-enabled', 'All set!', 'Notifications are enabled.', 0);
     }
   }, [isSupported, isEffectivelyEnabled, permission, setIsEnabled, requestPermission]);
 
@@ -75,15 +76,18 @@ export const useNotifications = (): NotificationPermissionState & NotificationAc
     [isSupported],
   );
 
-  return {
-    permission,
-    isSupported,
-    isEnabled,
-    isEffectivelyEnabled,
-    toggleEnabled,
-    scheduleNotification,
-    cancelNotification,
-  };
+  return useMemo(
+    () => ({
+      permission,
+      isSupported,
+      isEnabled,
+      isEffectivelyEnabled,
+      toggleEnabled,
+      scheduleNotification,
+      cancelNotification,
+    }),
+    [cancelNotification, isEffectivelyEnabled, isEnabled, isSupported, permission, scheduleNotification, toggleEnabled],
+  );
 };
 
 const _scheduleNotification = (id: string, title: string, body: string, delay: number) => {
