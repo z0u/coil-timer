@@ -9,16 +9,24 @@
     <!-- Theme initialization script to avoid FOUC -->
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC
-      document.documentElement.classList.toggle(
-        'dark',
+      const isDark =
         localStorage.theme === 'dark' ||
-          (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches),
-      );
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.classList.toggle('dark', isDark);
+
+      // Remove any existing <meta name="theme-color"> without a media attribute
+      document.querySelectorAll('meta[name="theme-color"]:not([media])').forEach((m) => m.remove());
+
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      meta.setAttribute('content', isDark ? 'black' : 'white');
+      document.head.appendChild(meta);
     </script>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="black" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

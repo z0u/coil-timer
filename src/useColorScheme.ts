@@ -10,6 +10,15 @@ const getInitialScheme = () => {
 
 const applySchemeToDOM = (scheme: 'light' | 'dark') => {
   document.documentElement.classList.toggle('dark', scheme === 'dark');
+  // Dynamically update <meta name="theme-color"> for manual theme switching
+  const themeColor = scheme === 'dark' ? 'black' : 'white';
+  let meta = document.querySelector('meta[name="theme-color"]:not([media])');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', themeColor);
 };
 
 export const useColorScheme = () => {
