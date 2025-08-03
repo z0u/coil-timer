@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export type Scheme = 'light' | 'dark' | 'auto';
-
-const getInitialScheme = (): Scheme => {
+const getInitialScheme = () => {
   const storedScheme = localStorage.getItem('theme');
   if (storedScheme === 'light' || storedScheme === 'dark') {
     return storedScheme;
@@ -10,16 +8,13 @@ const getInitialScheme = (): Scheme => {
   return 'auto';
 };
 
-const applySchemeToDOM = (scheme: Scheme) => {
-  document.documentElement.classList.toggle(
-    'dark',
-    scheme === 'dark' || (scheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches),
-  );
+const applySchemeToDOM = (scheme: 'light' | 'dark') => {
+  document.documentElement.classList.toggle('dark', scheme === 'dark');
 };
 
 export const useColorScheme = () => {
-  const [selectedScheme, setSelectedScheme] = useState<Scheme>(getInitialScheme());
-  const [effectiveScheme, setEffectiveScheme] = useState<Scheme>(getInitialScheme());
+  const [selectedScheme, setSelectedScheme] = useState<'light' | 'dark' | 'auto'>(getInitialScheme());
+  const [effectiveScheme, setEffectiveScheme] = useState<'light' | 'dark' | null>(null);
 
   useEffect(() => {
     if (selectedScheme === 'auto') {
@@ -40,7 +35,7 @@ export const useColorScheme = () => {
     }
   }, [selectedScheme]);
 
-  const updateScheme = (s: Scheme) => {
+  const updateScheme = (s: 'light' | 'dark' | 'auto') => {
     if (s === 'auto') {
       localStorage.removeItem('theme');
     } else {

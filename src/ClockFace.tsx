@@ -1,7 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import { Hours } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
@@ -24,7 +24,7 @@ export type ClockFaceHandle = {
 
 type ClockFaceProps = {
   className?: string;
-  colorScheme: string;
+  colorScheme: 'light' | 'dark';
   onClockRadiusChange?: (radius: number) => void;
   initialTime: number;
 };
@@ -39,62 +39,52 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
   ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-    const timeToDrawRef = useRef(initialTime);
+    const theme = useCanvasTheme(canvas, colorScheme);
 
-    const theme = useMemo(() => {
-      if (!canvas) return null;
+    const drawClockFace = useCallback(
+      (timeToDraw: number) => {
+        const ctx = canvas?.getContext('2d');
+        if (!canvas || !ctx || !dimensions || !theme) return;
 
-      const style = getComputedStyle(canvas);
-      return {
-        scheme: colorScheme,
-        stroke: style.stroke,
-        bg: style.backgroundColor,
-        text: style.color,
-      };
-    }, [canvas, colorScheme, className ?? '']);
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
 
-    const drawClockFace = useCallback(() => {
-      const ctx = canvas?.getContext('2d');
-      if (!canvas || !ctx || !dimensions || !theme) return;
+        // Resize canvas if needed
+        if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+          canvas.width = width * dpr;
+          canvas.height = height * dpr;
+        }
 
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-
-      // Resize canvas if needed
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
+        ctx.resetTransform();
         ctx.scale(dpr, dpr);
-      }
 
-      ctx.fillStyle = theme.bg;
-      ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, width, height);
 
-      const tracks = getTracks(timeToDrawRef.current, CLOCK_DIAMETER, TRACK_SPACING, Hours);
-      const finalTrack = tracks[tracks.length - 1];
-      if (!finalTrack) return;
-      const center: v.Vec2Like = [width / 2, height / 2];
+        const tracks = getTracks(timeToDraw, CLOCK_DIAMETER, TRACK_SPACING, Hours);
+        const finalTrack = tracks[tracks.length - 1];
+        if (!finalTrack) return;
+        const center: v.Vec2Like = [width / 2, height / 2];
 
-      ctx.save();
-      try {
-        // Use relative coordinates
-        ctx.translate(center[0], center[1]);
-        ctx.scale(dimensions.radius, dimensions.radius);
-        drawClockTicks(ctx, finalTrack, theme.text);
-        drawRevolutions(ctx, tracks, theme.stroke);
-      } finally {
-        ctx.restore();
-      }
-    }, [canvas, dimensions, theme]);
+        ctx.save();
+        try {
+          // Use relative coordinates
+          ctx.translate(center[0], center[1]);
+          ctx.scale(dimensions.radius, dimensions.radius);
+          drawClockTicks(ctx, finalTrack, theme.text);
+          drawRevolutions(ctx, tracks, theme.stroke);
+        } finally {
+          ctx.restore();
+        }
+      },
+      [canvas, dimensions, theme],
+    );
 
     useImperativeHandle(
       ref,
       () => ({
-        setTime: (time) => {
-          timeToDrawRef.current = time;
-          drawClockFace();
-        },
+        setTime: (time) => drawClockFace(time),
       }),
       [drawClockFace],
     );
@@ -115,20 +105,10 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
     }, [canvas, onClockRadiusChange]);
 
     useEffect(() => {
-      drawClockFace();
-    }, [drawClockFace]);
+      drawClockFace(initialTime);
+    }, [drawClockFace, initialTime]);
 
-    return (
-      <>
-        {/* <ColorProbe
-          onColorChange={(theme) => {
-            console.log(theme);
-            if (theme) setTheme(theme);
-          }}
-        /> */}
-        <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />
-      </>
-    );
+    return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
   },
 );
 
@@ -288,3 +268,37 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
 };
 
 const unmix = (a: number, b: number, v: number): number => (v - a) / (b - a);
+
+type ClockTheme = {
+  scheme: 'light' | 'dark';
+  stroke: string;
+  bg: string;
+  text: string;
+};
+
+const useCanvasTheme = (canvas: HTMLCanvasElement | null, colorScheme: 'light' | 'dark') => {
+  const [theme, setTheme] = useState<ClockTheme | null>(null);
+
+  useEffect(() => {
+    if (!canvas) return;
+
+    const updateTheme = () => {
+      const style = getComputedStyle(canvas);
+      setTheme({
+        scheme: colorScheme,
+        stroke: style.stroke,
+        bg: style.backgroundColor,
+        text: style.color,
+      });
+    };
+
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(canvas, { attributes: true, attributeFilter: ['class', 'style'] });
+
+    return () => observer.disconnect();
+  }, [canvas, colorScheme]);
+
+  return theme;
+};

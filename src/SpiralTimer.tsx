@@ -12,7 +12,7 @@ import { ToggleButton } from './ToggleButton';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
-import { Scheme, useColorScheme } from './useColorScheme';
+import { useColorScheme } from './useColorScheme';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
@@ -109,7 +109,7 @@ const SpiralTimer = () => {
     if (clockFace) clockFace.setTime(remainingTime);
     if (timeEl) timeEl.textContent = formatDuration(math.roundTo(remainingTime, Minutes));
     if (endTimeEl) endTimeEl.textContent = formatTime(endTime);
-  }, [timeEl, endTimeEl, timerState, setTimerState]);
+  }, [clockFace, timeEl, endTimeEl, timerState, setTimerState]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
 
@@ -205,7 +205,7 @@ const SpiralTimer = () => {
   };
 
   const cycleColorScheme = () => {
-    const nextScheme: Scheme = scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'auto' : 'light';
+    const nextScheme = scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'auto' : 'light';
     scheme.update(nextScheme);
   };
 
@@ -241,18 +241,20 @@ const SpiralTimer = () => {
           isDimmed ? 'opacity-30 delay-5000 duration-2000' : 'opacity-100 duration-1000',
         )}
       >
-        <ClockFace
-          ref={setClockFace}
-          className={clsx(
-            // These are queried by the clock face to theme the canvas
-            'stroke-red-500 dark:stroke-red-600', // Tracks
-            'text-gray-600 dark:text-gray-200', // Ticks
-            'bg-white dark:bg-black', // Background
-          )}
-          colorScheme={scheme.effective}
-          initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
-          onClockRadiusChange={setClockRadius}
-        />
+        {scheme.effective && (
+          <ClockFace
+            ref={setClockFace}
+            className={clsx(
+              // These are queried by the clock face to theme the canvas
+              'stroke-red-500 dark:stroke-red-600', // Tracks
+              'text-gray-600 dark:text-gray-200', // Ticks
+              'bg-white dark:bg-black', // Background
+            )}
+            colorScheme={scheme.effective}
+            initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
+            onClockRadiusChange={setClockRadius}
+          />
+        )}
         <JogDial
           ref={setJogDial}
           aria-label={(() => {

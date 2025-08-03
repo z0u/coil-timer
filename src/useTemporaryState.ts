@@ -14,7 +14,7 @@ export function useTemporaryState<S>(
       _setState(tempState);
       timeout.set(() => _setState(initialState), duration ?? _duration);
     },
-    [initialState, _duration],
+    [initialState, timeout, _duration],
   );
 
   return [state, setState];
