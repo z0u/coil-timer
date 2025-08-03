@@ -51,7 +51,21 @@ export const useNotifications = (): NotificationPermissionState & NotificationAc
 
     if (_permission === 'granted') {
       setIsEnabled(true);
-      _scheduleNotification('notifictions-enabled', 'All set!', 'Notifications are enabled.', 0);
+
+      // Show immediate notification to test
+      _scheduleNotification('notifications-enabled', 'All set!', 'Notifications are enabled.', 0);
+
+      // On mobile, show a warning about reliability
+      if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        setTimeout(() => {
+          _scheduleNotification(
+            'mobile-warning',
+            'Mobile Notice',
+            'Background notifications may not work reliably on mobile. Keep the app open or return to it before timers expire.',
+            3000,
+          );
+        }, 1000);
+      }
     }
   }, [isSupported, isEffectivelyEnabled, permission, setIsEnabled, requestPermission]);
 
