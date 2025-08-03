@@ -9,6 +9,7 @@ interface ToggleButtonProps {
   'aria-label': string;
   title: string;
   className?: string;
+  disabled?: boolean;
   defaultIcon: ReactNode;
   toggledIcon: ReactNode;
 }
@@ -20,6 +21,7 @@ export const ToggleButton = ({
   'aria-label': ariaLabel,
   title,
   className,
+  disabled,
   defaultIcon,
   toggledIcon,
 }: ToggleButtonProps) => {
@@ -28,6 +30,7 @@ export const ToggleButton = ({
       aria-label={ariaLabel}
       title={title}
       className={clsx('relative', className)}
+      disabled={disabled}
       isVisible={isVisible}
       onClick={onToggle}
     >
