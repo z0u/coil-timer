@@ -3,18 +3,18 @@ import { useTimeoutRef } from './useTimeoutRef';
 
 export function useTemporaryState<S>(
   initialState: S | (() => S),
-  duration: number,
+  duration?: number,
 ): [S, (tempState: SetStateAction<S>, duration?: number) => void] {
   const [state, _setState] = useState(initialState);
-  const timeout = useTimeoutRef();
-  const _duration = duration;
+  const { set: _setTimeout } = useTimeoutRef();
+  const _duration = duration ?? 0;
 
   const setState = useCallback(
     (tempState: SetStateAction<S>, duration?: number) => {
       _setState(tempState);
-      timeout.set(() => _setState(initialState), duration ?? _duration);
+      _setTimeout(() => _setState(initialState), duration ?? _duration);
     },
-    [initialState, timeout, _duration],
+    [initialState, _setTimeout, _duration],
   );
 
   return [state, setState];
