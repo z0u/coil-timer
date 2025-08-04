@@ -1,8 +1,9 @@
+import * as col from '@thi.ng/color';
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
-import { Hours } from './time-utils';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Hours, Second } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -22,8 +23,11 @@ const MINOR_TICK_LENGTH = 0.016;
 const MINOR_TICK_WIDTH = 0.016;
 const TRACK_WIDTH = 0.025;
 
+const VICTORY_LAP_DURATION = 1 * Second;
+
 export type ClockFaceHandle = {
-  setTime: (time: number) => void;
+  draw: (time: number) => void;
+  stepVictory: (dt: number) => boolean; // Returns true if animation is complete
 };
 
 type ClockFaceProps = {
@@ -39,10 +43,16 @@ type Dimensions = {
   radius: number;
 };
 
+function ease(t: number, clamp = true): number {
+  if (clamp) t = math.clamp(t, 0, 1);
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
   ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+    const victoryAnimation = useRef<number>(0);
     const theme = useCanvasTheme(canvas, colorScheme);
 
     const drawClockFace = useCallback(
@@ -77,7 +87,18 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           ctx.translate(center[0], center[1]);
           ctx.scale(dimensions.radius, dimensions.radius);
           drawRevolutions(ctx, tracks, theme.stroke);
-          drawClockTicks(ctx, finalTrack, theme.text);
+
+          let isFinishing = false;
+          if (victoryAnimation.current) {
+            isFinishing = drawVictoryAnimation(ctx, finalTrack, victoryAnimation.current, theme);
+          }
+
+          let primaryTickStyle: 'triangle' | 'exclamation';
+          const isAnyTimeRemaining = finalTrack.rev > 0 || finalTrack.angle > 0;
+          if (isAnyTimeRemaining || isFinishing) primaryTickStyle = 'triangle';
+          else primaryTickStyle = 'exclamation';
+
+          drawClockTicks({ ctx, finalTrack, theme, primaryTickStyle });
         } finally {
           ctx.restore();
         }
@@ -88,7 +109,17 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
     useImperativeHandle(
       ref,
       () => ({
-        setTime: (time) => drawClockFace(time),
+        draw: drawClockFace,
+        stepVictory: (dt: number) => {
+          const t = victoryAnimation.current + dt;
+          if (t >= VICTORY_LAP_DURATION) {
+            victoryAnimation.current = 0;
+            return true;
+          } else {
+            victoryAnimation.current = t;
+            return false;
+          }
+        },
       }),
       [drawClockFace],
     );
@@ -112,6 +143,9 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       drawClockFace(initialTime);
     }, [drawClockFace, initialTime]);
 
+    // Redraw when victory animation is active (polling or external trigger should call drawClockFace)
+    // No-op effect here; animation should be advanced and drawn by external timer/raf
+
     return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
   },
 );
@@ -124,8 +158,6 @@ type Track = {
   distFromStart: number; // negative for current track
   distFromEnd: number; // negative for current track
 };
-
-const EPSILON = 0.001 * math.PI;
 
 const getTracks = (
   timeToDraw: number,
@@ -142,8 +174,8 @@ const getTracks = (
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
-    const revolutionStart = rev * 60 * 60 * 1000;
-    const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
+    const revolutionStart = rev * Hours;
+    const revolutionEnd = (rev + 1) * Hours;
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
@@ -191,6 +223,7 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], trackCo
 
     // Draw revolutions
     for (const track of tracks) {
+      if (track.angle < 0.001) continue;
       const { thickness, radius, angle, distFromStart, distFromEnd } = track;
       const dist = Math.abs(distFromStart) < Math.abs(distFromEnd) ? distFromStart : distFromEnd;
       const lineWidth = TRACK_WIDTH * thickness;
@@ -198,31 +231,33 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], trackCo
       ctx.globalAlpha = math.clamp(1 - dist / 6, 0.5, 1.0);
       ctx.lineWidth = lineWidth * math.clamp(1 - dist / 6, 0.15, 1.0);
 
+      // Draw the remaining duration of this hour (track) as a thick arc
       ctx.beginPath();
-      if (angle > EPSILON) {
-        // Draw the remaining duration of this hour (track) as a thick arc
-        ctx.arc(0, 0, radius, -math.HALF_PI, angle - math.HALF_PI);
-        ctx.stroke();
-      } else {
-        // Draw a dot at the top if the track is empty
-        ctx.arc(0, -radius, lineWidth / 2, 0, math.TAU);
-        ctx.fill();
-      }
+      ctx.arc(0, 0, radius, -math.HALF_PI, angle - math.HALF_PI);
+      ctx.stroke();
     }
   } finally {
     ctx.restore();
   }
 };
 
-const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickColor: string) => {
+const drawClockTicks = ({
+  ctx,
+  finalTrack,
+  theme,
+  primaryTickStyle,
+}: {
+  ctx: CanvasRenderingContext2D;
+  finalTrack: Track;
+  theme: ClockTheme;
+  primaryTickStyle: 'triangle' | 'exclamation';
+}) => {
   ctx.save();
   try {
-    ctx.strokeStyle = tickColor;
-    ctx.fillStyle = tickColor;
+    ctx.strokeStyle = theme.text;
+    ctx.fillStyle = theme.text;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    const hasFinished = finalTrack.rev === 0 && finalTrack.angle === 0;
 
     for (let i = 0; i < 12; i++) {
       const angle = (math.TAU / 12) * i;
@@ -248,20 +283,27 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
       ctx.rotate(angle - math.PI); // Start from top
       ctx.globalAlpha = isPrimary ? 1 : proximity * 0.9;
       if (isPrimary) {
-        // Draw a triangle pointing in
-        const length = hasFinished ? PRIMARY_TICK_LENGTH_FINISHED : PRIMARY_TICK_LENGTH;
-        const width = hasFinished ? PRIMARY_TICK_WIDTH_FINISHED : PRIMARY_TICK_WIDTH;
-        ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
-        ctx.beginPath();
-        ctx.moveTo(0, TICK_OUTER_DIA - length);
-        ctx.lineTo(-width / 2, TICK_OUTER_DIA);
-        ctx.lineTo(width / 2, TICK_OUTER_DIA);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.fill();
-        if (finalTrack.rev === 0 && finalTrack.angle === 0) {
-          // Timer has finished. Draw a dot underneath the triangle to make it look like an exclamation mark
+        if (primaryTickStyle === 'exclamation') {
+          // Draw an exclamation mark !
+          ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
+          ctx.beginPath();
+          ctx.moveTo(0, TICK_OUTER_DIA - PRIMARY_TICK_LENGTH_FINISHED);
+          ctx.lineTo(-PRIMARY_TICK_WIDTH_FINISHED / 2, TICK_OUTER_DIA);
+          ctx.lineTo(PRIMARY_TICK_WIDTH_FINISHED / 2, TICK_OUTER_DIA);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.fill();
           ctx.arc(0, CLOCK_DIAMETER, PRIMARY_TICK_WIDTH_FINISHED, 0, math.TAU);
+          ctx.fill();
+        } else {
+          // Draw a triangle pointing in
+          ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
+          ctx.beginPath();
+          ctx.moveTo(0, TICK_OUTER_DIA - PRIMARY_TICK_LENGTH);
+          ctx.lineTo(-PRIMARY_TICK_WIDTH / 2, TICK_OUTER_DIA);
+          ctx.lineTo(PRIMARY_TICK_WIDTH / 2, TICK_OUTER_DIA);
+          ctx.closePath();
+          ctx.stroke();
           ctx.fill();
         }
       } else {
@@ -278,6 +320,45 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
   } finally {
     ctx.restore();
   }
+};
+
+const drawVictoryAnimation = (
+  ctx: CanvasRenderingContext2D,
+  finalTrack: Track,
+  frameTime: number,
+  theme: ClockTheme,
+) => {
+  const animationProgress = frameTime / VICTORY_LAP_DURATION; // Convert to 0-1 range
+  const radius = finalTrack.radius;
+
+  // Calculate head and tail positions using ease function
+  const tailDelay = 0.3;
+  const headProgress = ease(animationProgress / (1 - tailDelay));
+
+  const tailProgress = ease(animationProgress / (1 - tailDelay) - tailDelay);
+  const color = col.mix([], col.srgb(theme.stroke), col.srgb(theme.text), ease(animationProgress));
+
+  // Convert to angles (negative for CCW from top)
+  const headAngle = -headProgress * math.TAU;
+  const tailAngle = -tailProgress * math.TAU;
+
+  ctx.save();
+  try {
+    ctx.strokeStyle = col.css(color);
+    ctx.lineWidth = TRACK_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 1.0;
+
+    // Draw the victory arc from tail to head
+    if (headAngle < tailAngle) {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, -math.HALF_PI + tailAngle, -math.HALF_PI + headAngle, true);
+      ctx.stroke();
+    }
+  } finally {
+    ctx.restore();
+  }
+  return headProgress < 1;
 };
 
 const unmix = (a: number, b: number, v: number): number => (v - a) / (b - a);

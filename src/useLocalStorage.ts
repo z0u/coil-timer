@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import z, { ZodType } from 'zod';
+import deepEqual from './deep-equal';
 
 const load = <S extends ZodType>(key: string, schema: S) => {
   const value = localStorage.getItem(key);
@@ -38,9 +39,8 @@ export const useLocalStorage = <S extends ZodType>(key: string, schema: S, initi
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== key) return;
-
-      const newState = load(key, schema);
-      setState(newState ?? initial);
+      const value = load(key, schema) ?? initial;
+      setState((curr) => (deepEqual(curr, value) ? curr : value));
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
