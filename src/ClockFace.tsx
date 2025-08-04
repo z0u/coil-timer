@@ -2,7 +2,7 @@ import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, useRef } from 'react';
-import { Hours } from './time-utils';
+import { Hours, Seconds } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -21,6 +21,8 @@ const MAJOR_TICK_WIDTH = 0.024;
 const MINOR_TICK_LENGTH = 0.016;
 const MINOR_TICK_WIDTH = 0.016;
 const TRACK_WIDTH = 0.025;
+
+const VICTORY_LAP_DURATION = 1 * Seconds;
 
 export type ClockFaceHandle = {
   draw: (time: number) => void;
@@ -46,8 +48,9 @@ type VictoryAnimationState = {
 };
 
 // Ease function for smooth animation
-const ease = (t: number): number => {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+const ease = (t: number, clamp = true): number => {
+  if (clamp) t = math.clamp(t, 0, 1);
+  return t < 0.5 ? 2 * t ** 2 : -1 + (4 - 2 * t) * t;
 };
 
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
@@ -113,7 +116,7 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           let { frameTime } = victoryAnimation.current;
           frameTime += dt;
           // We need to return animationComplete from the current state
-          if (frameTime >= 1000) {
+          if (frameTime >= VICTORY_LAP_DURATION) {
             victoryAnimation.current = { frameTime: 0, isActive: false };
             return true;
           } else {
@@ -177,8 +180,8 @@ const getTracks = (
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
-    const revolutionStart = rev * 60 * 60 * 1000;
-    const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
+    const revolutionStart = rev * Hours;
+    const revolutionEnd = (rev + 1) * Hours;
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
@@ -316,13 +319,13 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
 };
 
 const drawVictoryAnimation = (ctx: CanvasRenderingContext2D, finalTrack: Track, frameTime: number) => {
-  const animationProgress = frameTime / 1000; // Convert to 0-1 range
+  const animationProgress = frameTime / VICTORY_LAP_DURATION; // Convert to 0-1 range
   const radius = finalTrack.radius;
 
   // Calculate head and tail positions using ease function
-  const headProgress = ease(Math.min(animationProgress * 2, 1)); // Head moves first half
-  const tailStart = Math.max(0, animationProgress - 0.5) * 2; // Tail starts halfway
-  const tailProgress = ease(tailStart);
+  const tailDelay = 0.3;
+  const headProgress = ease(animationProgress * 2);
+  const tailProgress = ease((animationProgress - tailDelay) * 2);
 
   // Convert to angles (negative for CCW from top)
   const headAngle = -headProgress * math.TAU;
@@ -345,7 +348,7 @@ const drawVictoryAnimation = (ctx: CanvasRenderingContext2D, finalTrack: Track, 
     // Draw the victory arc from tail to head
     if (headAngle < tailAngle) {
       ctx.beginPath();
-      ctx.arc(0, 0, radius, -math.HALF_PI + tailAngle, -math.HALF_PI + headAngle);
+      ctx.arc(0, 0, radius, -math.HALF_PI + tailAngle, -math.HALF_PI + headAngle, true);
       ctx.stroke();
     }
   } finally {
