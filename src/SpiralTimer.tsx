@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { HelpCircle, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
+import { HelpCircle, History, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -83,10 +83,13 @@ const SpiralTimer = () => {
         const endTime = Date.now() + newRemainingTime;
         setTimerState({ is: 'running', endTime });
       } else {
-        setTimerState({ is: 'paused', remainingTime: newRemainingTime });
+        // When setting to paused, only save the duration if we don't already have one
+        const savedDuration = (timerState.is === 'paused' && 'savedDuration' in timerState && timerState.savedDuration !== undefined) ? 
+          timerState.savedDuration : newRemainingTime;
+        setTimerState({ is: 'paused', remainingTime: newRemainingTime, savedDuration });
       }
     },
-    [setTimerState],
+    [setTimerState, timerState],
   );
 
   const toggleRunningOrPaused = useCallback(() => {
@@ -141,7 +144,14 @@ const SpiralTimer = () => {
       const remainingTime = timerState.is === 'paused' ? timerState.remainingTime : timerState.endTime - Date.now();
       const newRemainingTime = clampTime(remainingTime + change);
 
-      setRunningOrPaused(timerState.is, newRemainingTime);
+      if (timerState.is === 'paused') {
+        // When adjusting a paused timer, preserve the existing savedDuration
+        const savedDuration = 'savedDuration' in timerState && timerState.savedDuration !== undefined ? 
+          timerState.savedDuration : newRemainingTime;
+        setTimerState({ is: 'paused', remainingTime: newRemainingTime, savedDuration });
+      } else {
+        setRunningOrPaused(timerState.is, newRemainingTime);
+      }
     },
     [timerState, setTimerState, setRunningOrPaused],
   );
@@ -152,7 +162,9 @@ const SpiralTimer = () => {
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
     timerInteractionRef.current = { remainingTime, hasChanged: false };
-    setTimerState({ is: 'interacting', was: timerState.is, remainingTime });
+    const savedDuration = timerState.is === 'paused' && 'savedDuration' in timerState ? 
+      timerState.savedDuration : undefined;
+    setTimerState({ is: 'interacting', was: timerState.is, remainingTime, savedDuration });
   };
 
   const handleJogMove = (event: JogEvent) => {
@@ -172,7 +184,13 @@ const SpiralTimer = () => {
     if (event.wasDragged) {
       // If dragged, round to the nearest minute and resume previous state
       const newRemainingTime = math.roundTo(remainingTime, Minutes);
-      setRunningOrPaused(timerState.was, newRemainingTime);
+      
+      // Save duration if we were paused and are dragging
+      if (timerState.was === 'paused') {
+        setTimerState({ is: 'paused', remainingTime: newRemainingTime, savedDuration: newRemainingTime });
+      } else {
+        setRunningOrPaused(timerState.was, newRemainingTime);
+      }
     } else {
       // If tapped, toggle between running and paused
       const nextState = timerState.was === 'running' ? 'paused' : 'running';
@@ -224,6 +242,30 @@ const SpiralTimer = () => {
     const nextScheme = scheme.selected === 'light' ? 'dark' : scheme.selected === 'dark' ? 'auto' : 'light';
     scheme.update(nextScheme);
   };
+
+  const resetTimer = useCallback(() => {
+    if (timerState.is === 'paused' && 'savedDuration' in timerState && timerState.savedDuration !== undefined) {
+      setTimerState({ is: 'paused', remainingTime: timerState.savedDuration, savedDuration: timerState.savedDuration });
+    }
+  }, [timerState, setTimerState]);
+
+  // Check if reset button should be shown
+  const shouldShowReset = timerState.is === 'paused' && 
+    'savedDuration' in timerState && 
+    timerState.savedDuration !== undefined &&
+    timerState.remainingTime !== timerState.savedDuration;
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = () => {
+      if (shouldShowReset) {
+        resetTimer();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [shouldShowReset, resetTimer]);
 
   // Wheel gesture handler for adding/subtracting time
   const handleWheel = useCallback(
@@ -350,6 +392,16 @@ const SpiralTimer = () => {
 
       {/* Toolbar top */}
       <Toolbar isVisible={controlsAreVisible}>
+        {shouldShowReset && (
+          <ToolbarButton
+            aria-label="Reset timer to saved duration"
+            title="Reset timer"
+            onClick={resetTimer}
+          >
+            <History size={24} />
+          </ToolbarButton>
+        )}
+
         <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"

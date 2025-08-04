@@ -8,6 +8,7 @@ const STORAGE_KEY = 'spiral-timer-state';
 const DEFAULT_STATE: TimerState = {
   is: 'paused',
   remainingTime: 10 * Minutes,
+  savedDuration: 10 * Minutes,
 };
 
 const loadTimerState = (): TimerState | null => {
@@ -40,10 +41,12 @@ const loadTimerState = (): TimerState | null => {
     if (remaining > 0) {
       return { is: 'running', endTime: saved.endTime };
     } else {
-      return { is: 'paused', remainingTime: 0 };
+      return { is: 'paused', remainingTime: 0, savedDuration: saved.savedDuration };
     }
   } else if (saved.is === 'paused') {
-    return { is: 'paused', remainingTime: saved.remainingTime };
+    return { is: 'paused', remainingTime: saved.remainingTime, savedDuration: saved.savedDuration };
+  } else if (saved.is === 'interacting') {
+    return { is: 'interacting', was: saved.was, remainingTime: saved.remainingTime, savedDuration: saved.savedDuration };
   }
   return null;
 };
