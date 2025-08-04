@@ -2,7 +2,8 @@ import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
-import { Hours } from './time-utils';
+import { Hours, Minutes } from './time-utils';
+import { TimerMode } from './usePersistentTimerMode';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -31,6 +32,7 @@ type ClockFaceProps = {
   colorScheme: 'light' | 'dark';
   onClockRadiusChange?: (radius: number) => void;
   initialTime: number;
+  mode: TimerMode;
 };
 
 type Dimensions = {
@@ -40,7 +42,7 @@ type Dimensions = {
 };
 
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
-  ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
+  ({ className, colorScheme, onClockRadiusChange, initialTime, mode }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
     const theme = useCanvasTheme(canvas, colorScheme);
@@ -66,7 +68,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
         ctx.fillStyle = theme.bg;
         ctx.fillRect(0, 0, width, height);
 
-        const tracks = getTracks(timeToDraw, CLOCK_DIAMETER, TRACK_SPACING, Hours);
+        const trackLength = mode === 'hours' ? Hours : Minutes;
+        const tracks = getTracks(timeToDraw, CLOCK_DIAMETER, TRACK_SPACING, trackLength);
         const finalTrack = tracks[tracks.length - 1];
         if (!finalTrack) return;
         const center: v.Vec2Like = [width / 2, height / 2];
@@ -77,12 +80,12 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           ctx.translate(center[0], center[1]);
           ctx.scale(dimensions.radius, dimensions.radius);
           drawRevolutions(ctx, tracks, theme.stroke);
-          drawClockTicks(ctx, finalTrack, theme.text);
+          drawClockTicks(ctx, finalTrack, theme.text, mode);
         } finally {
           ctx.restore();
         }
       },
-      [canvas, dimensions, theme],
+      [canvas, dimensions, theme, mode],
     );
 
     useImperativeHandle(
@@ -131,19 +134,23 @@ const getTracks = (
   timeToDraw: number,
   baseRadius: number,
   radiusSpacing: number,
-  /** The length of each track, e.g. "one hour" */
+  /** The length of each track, e.g. "one hour" or "one minute" */
   trackLength: number,
 ) => {
   const totalRevolutions = Math.ceil(Math.max(1, timeToDraw / trackLength));
+  const isMinuteMode = trackLength === Minutes;
+  const maxRevolutions = isMinuteMode ? 20 : 24; // 20 minutes or 24 hours
 
   const tracks: Track[] = [];
-  for (let rev = 0; rev < totalRevolutions; rev++) {
-    const thickness = (1 - rev / 24) ** 0.5;
+  for (let rev = 0; rev < Math.min(totalRevolutions, maxRevolutions); rev++) {
+    const thickness = isMinuteMode 
+      ? (1 - rev / 20) ** 0.5  // Scale for 20 minutes
+      : (1 - rev / 24) ** 0.5; // Scale for 24 hours
     const radius = baseRadius - rev ** 0.93 * radiusSpacing;
     if (radius <= 0) continue;
 
-    const revolutionStart = rev * 60 * 60 * 1000;
-    const revolutionEnd = (rev + 1) * 60 * 60 * 1000;
+    const revolutionStart = rev * trackLength;
+    const revolutionEnd = (rev + 1) * trackLength;
 
     let revolutionTime: number;
     if (timeToDraw >= revolutionEnd) {
@@ -214,7 +221,7 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], trackCo
   }
 };
 
-const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickColor: string) => {
+const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickColor: string, mode: TimerMode) => {
   ctx.save();
   try {
     ctx.strokeStyle = tickColor;
@@ -223,23 +230,36 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
     ctx.lineJoin = 'round';
 
     const hasFinished = finalTrack.rev === 0 && finalTrack.angle === 0;
+    const tickCount = mode === 'hours' ? 12 : 60; // 12 ticks for hours, 60 for minutes
+    const angleStep = math.TAU / tickCount;
 
-    for (let i = 0; i < 12; i++) {
-      const angle = (math.TAU / 12) * i;
-      const isMajor = i % 3 === 0;
-      const isPrimary = i === 0;
+    for (let i = 0; i < tickCount; i++) {
+      const angle = angleStep * i;
+      
+      let isMajor: boolean;
+      let isPrimary: boolean;
+      
+      if (mode === 'hours') {
+        // For hours mode: major every 3 ticks (quarters), primary at 0 (top)
+        isMajor = i % 3 === 0;
+        isPrimary = i === 0;
+      } else {
+        // For minutes mode: major every 5 ticks (every 5 minutes), primary at 0 (top)
+        isMajor = i % 5 === 0;
+        isPrimary = i === 0;
+      }
 
       // Calculate proximity for alpha blending
       let angleDist: number;
       if (finalTrack.rev === 0) {
         // Special case: don't use math.angleDist when the final track is also track 0, i.e. it is the last/only track.
         // This prevents ticks < 0 from showing.
-        angleDist = Math.abs(finalTrack.angle - (angle + math.TAU / 24));
+        angleDist = Math.abs(finalTrack.angle - (angle + math.TAU / (tickCount * 2)));
       } else {
         // For tracks > 0, treat the difference as cyclic to show ticks on both sides of the start.
         angleDist = math.angleDist(
           finalTrack.angle,
-          angle + math.TAU / 24, // Add a bit to brighten future ticks more
+          angle + math.TAU / (tickCount * 2), // Add a bit to brighten future ticks more
         );
       }
       const proximity = math.clamp(1 - angleDist / math.rad(30), 0, 1);
