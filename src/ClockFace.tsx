@@ -24,6 +24,7 @@ const TRACK_WIDTH = 0.025;
 
 export type ClockFaceHandle = {
   setTime: (time: number) => void;
+  stepVictory: (dt: number) => boolean; // Returns true if animation is complete
 };
 
 type ClockFaceProps = {
@@ -39,10 +40,24 @@ type Dimensions = {
   radius: number;
 };
 
+type VictoryAnimationState = {
+  frameTime: number;
+  isActive: boolean;
+};
+
+// Ease function for smooth animation
+const ease = (t: number): number => {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+};
+
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
   ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+    const [victoryAnimation, setVictoryAnimation] = useState<VictoryAnimationState>({
+      frameTime: 0,
+      isActive: false,
+    });
     const theme = useCanvasTheme(canvas, colorScheme);
 
     const drawClockFace = useCallback(
@@ -78,6 +93,11 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           ctx.scale(dimensions.radius, dimensions.radius);
           drawRevolutions(ctx, tracks, theme.stroke);
           drawClockTicks(ctx, finalTrack, theme.text);
+          
+          // Draw victory animation if active
+          if (victoryAnimation.isActive) {
+            drawVictoryAnimation(ctx, finalTrack, victoryAnimation.frameTime);
+          }
         } finally {
           ctx.restore();
         }
@@ -89,6 +109,35 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       ref,
       () => ({
         setTime: (time) => drawClockFace(time),
+        stepVictory: (dt: number) => {
+          let animationComplete = false;
+          
+          setVictoryAnimation(prev => {
+            let newFrameTime = prev.frameTime;
+            let isActive = prev.isActive;
+            
+            if (!prev.isActive) {
+              // Start the animation
+              isActive = true;
+              newFrameTime = 0;
+            }
+            
+            if (isActive) {
+              newFrameTime += dt;
+              if (newFrameTime >= 1000) {
+                // Animation completed
+                isActive = false;
+                newFrameTime = 0;
+                animationComplete = true;
+              }
+            }
+            
+            return { frameTime: newFrameTime, isActive };
+          });
+          
+          // We need to return animationComplete from the current state, not from the setter
+          return victoryAnimation.frameTime + dt >= 1000;
+        },
       }),
       [drawClockFace],
     );
@@ -111,6 +160,13 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
     useEffect(() => {
       drawClockFace(initialTime);
     }, [drawClockFace, initialTime]);
+
+    useEffect(() => {
+      // Redraw when victory animation state changes
+      if (victoryAnimation.isActive) {
+        drawClockFace(0);
+      }
+    }, [victoryAnimation, drawClockFace]);
 
     return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
   },
@@ -274,6 +330,44 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
         ctx.stroke();
       }
       ctx.restore();
+    }
+  } finally {
+    ctx.restore();
+  }
+};
+
+const drawVictoryAnimation = (ctx: CanvasRenderingContext2D, finalTrack: Track, frameTime: number) => {
+  const animationProgress = frameTime / 1000; // Convert to 0-1 range
+  const radius = finalTrack.radius;
+  
+  // Calculate head and tail positions using ease function
+  const headProgress = ease(Math.min(animationProgress * 2, 1)); // Head moves first half
+  const tailStart = Math.max(0, animationProgress - 0.5) * 2; // Tail starts halfway
+  const tailProgress = ease(tailStart);
+  
+  // Convert to angles (negative for CCW from top)
+  const headAngle = -headProgress * math.TAU;
+  const tailAngle = -tailProgress * math.TAU;
+  
+  // Color interpolation from red to white
+  const colorProgress = animationProgress;
+  const red = Math.round(255);
+  const green = Math.round(255 * colorProgress);
+  const blue = Math.round(255 * colorProgress);
+  const color = `rgb(${red}, ${green}, ${blue})`;
+  
+  ctx.save();
+  try {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = TRACK_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 1.0;
+    
+    // Draw the victory arc from tail to head
+    if (headAngle < tailAngle) {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, -math.HALF_PI + tailAngle, -math.HALF_PI + headAngle);
+      ctx.stroke();
     }
   } finally {
     ctx.restore();

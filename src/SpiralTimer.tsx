@@ -43,6 +43,7 @@ const FPS: Record<TimerState['is'], number> = {
   interacting: 30,
   running: 1,
   paused: 1 / 30, // Twice per minute
+  finished: 60, // High frame rate for victory animation
 };
 
 const SpiralTimer = () => {
@@ -107,9 +108,24 @@ const SpiralTimer = () => {
       endTime = timerState.endTime;
       remainingTime = timerState.endTime - Date.now();
       if (remainingTime <= 0) {
-        setRunningOrPaused('paused', 0);
+        // Timer finished - transition to finished state
+        setTimerState({ is: 'finished' });
         return; // State change will re-run the effect.
       }
+    } else if (timerState.is === 'finished') {
+      // Handle victory animation
+      const deltaTime = 16.67; // Assume ~60 FPS, so ~16.67ms per frame
+      
+      let animationComplete = false;
+      if (clockFace) {
+        animationComplete = clockFace.stepVictory(deltaTime);
+      }
+      
+      // Check if animation is complete
+      if (animationComplete) {
+        setTimerState({ is: 'paused', remainingTime: 0 });
+      }
+      return;
     } else if (timerState.is === 'paused') {
       endTime = timerState.remainingTime + Date.now();
       remainingTime = timerState.remainingTime;
@@ -127,7 +143,7 @@ const SpiralTimer = () => {
     if (endTimeEl) {
       endTimeEl.textContent = zerosAsOs(formatTime(endTime));
     }
-  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setRunningOrPaused]);
+  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setTimerState]);
 
   useAnimation({ runFrame, fps: FPS[timerState.is] });
 
@@ -237,7 +253,7 @@ const SpiralTimer = () => {
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
-  const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
+  const controlsAreVisible = timerState.is === 'paused' || timerState.is === 'finished' || mustShowControls;
 
   return (
     <div

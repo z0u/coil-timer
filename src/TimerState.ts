@@ -4,6 +4,7 @@ import z from 'zod';
 export const TimerStateSchema = z.union([
   z.object({ is: z.literal('running'), endTime: z.number() }),
   z.object({ is: z.literal('paused'), remainingTime: z.number() }),
+  z.object({ is: z.literal('finished') }),
   z.object({
     is: z.literal('interacting'),
     was: z.union([z.literal('running'), z.literal('paused')]),
