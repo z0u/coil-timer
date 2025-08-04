@@ -1,19 +1,19 @@
 <svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
   <rect width="192" height="192" fill="black" />
-  <g>
-    <circle cx="96" cy="96" r="60" fill="none" stroke="oklch(0.58 0.24 28.48)" stroke-width="8" opacity="0.6" />
+  <g transform="scale(0.8)" transform-origin="96 96">
+    <circle cx="96" cy="96" r="60" fill="none" stroke="oklch(0.58 0.24 28.48)" stroke-width="16" opacity="0.8" />
     <path
       d="M 96 36 A 60 60 0 0 1 156 96"
       fill="none"
       stroke="black"
-      stroke-width="18"
+      stroke-width="34"
       stroke-linecap="round"
     />
     <path
       d="M 96 36 A 60 60 0 0 1 156 96"
       fill="none"
       stroke="oklch(0.58 0.24 28.48)"
-      stroke-width="16"
+      stroke-width="32"
       stroke-linecap="round"
     />
   </g>
