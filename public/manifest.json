@@ -19,6 +19,12 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
+    {
+      "src": "icon-any-32.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ],
   "categories": ["productivity", "utilities"],
   "orientation": "any"
