@@ -45,3 +45,25 @@ export const formatTimeSr = (timestamp: number) => {
     minute: '2-digit',
   }).format(new Date(timestamp));
 };
+
+export const formatDurationMinutes = (ms: number) => {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}'${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${seconds}`;
+};
+
+export const formatDurationMinutesSr = (ms: number) => {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes} minutes ${seconds} seconds`;
+  }
+  return `${seconds} seconds`;
+};

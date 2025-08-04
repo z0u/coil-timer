@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { HelpCircle, Moon, Pause, Scan, Sun, SunMoon } from 'lucide-react';
+import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -8,6 +8,8 @@ import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
 import {
   formatDuration,
+  formatDurationMinutes,
+  formatDurationMinutesSr,
   formatDurationSr,
   formatTime,
   formatTimeSr,
@@ -19,6 +21,7 @@ import {
   Second,
   Seconds,
 } from './time-utils';
+import { TimerModeSchema } from './TimerMode';
 import {
   changeTime,
   runningOrPaused,
@@ -51,13 +54,19 @@ const OVERLAY_TIMEOUT = 5 * Second;
 const FPS: Record<TimerState['is'], number> = {
   interacting: 30,
   running: 1,
-  paused: 1 / 30, // Twice per minute
-  finished: 60, // High frame rate for victory animation
+  paused: 1 / 30,
+  finished: 60,
+};
+
+const MINUTES_MODE_FPS = {
+  ...FPS,
+  running: 6, // mimic high-resolution stopwatches
 };
 
 const SpiralTimer = () => {
   // Device capabilities
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
+  const [timerMode, setTimerMode] = useLocalStorage('coil-timer-mode', TimerModeSchema, 'hours');
   const [timerState, setTimerState] = useLocalStorage('coil-timer-state', TimerStateSchema, {
     is: 'paused',
     remainingTime: 10 * Minutes,
@@ -83,7 +92,13 @@ const SpiralTimer = () => {
     setMustShowControls(true);
   }, [timerState.is, setMustShowControls]);
 
-  const clampTime = (time: number) => math.clamp(time, 0, 24 * Hours);
+  const clampTime = useCallback(
+    (time: number) => {
+      const maxTime = timerMode === 'hours' ? 24 * Hours : 20 * Minutes;
+      return math.clamp(time, 0, maxTime);
+    },
+    [timerMode],
+  );
 
   const runFrame = useCallback(() => {
     let remainingTime: number;
@@ -121,17 +136,28 @@ const SpiralTimer = () => {
     clockFace?.draw(remainingTime);
 
     if (srTimeEl && endTime != null) {
-      srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
+      if (timerMode === 'hours') {
+        srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
+      } else {
+        srTimeEl.textContent = `${formatDurationMinutesSr(math.roundTo(remainingTime, Seconds))} (${formatTimeSr(endTime)})`;
+      }
     }
+
     if (timeEl) {
-      timeEl.textContent = zerosAsOs(formatDuration(math.roundTo(remainingTime, Minutes)));
+      if (timerMode === 'hours') {
+        timeEl.textContent = zerosAsOs(formatDuration(math.roundTo(remainingTime, Minutes)));
+      } else {
+        timeEl.textContent = zerosAsOs(formatDurationMinutes(math.roundTo(remainingTime, Seconds)));
+      }
     }
+
     if (endTimeEl && endTime != null) {
       endTimeEl.textContent = zerosAsOs(formatTime(endTime));
     }
-  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setTimerState]);
+  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setTimerState, timerMode]);
 
-  useAnimation({ runFrame, fps: FPS[timerState.is] });
+  const fpsMap = timerMode === 'hours' ? FPS : MINUTES_MODE_FPS;
+  useAnimation({ runFrame, fps: fpsMap[timerState.is] });
 
   // JogDial interaction handlers
   const handleJogStart = () => {
@@ -145,7 +171,8 @@ const SpiralTimer = () => {
   const handleJogMove = (event: JogEvent) => {
     if (timerState.is !== 'interacting' || !timerInteractionRef.current) return;
 
-    const deltaTime = (event.deltaAngle / math.TAU) * 1 * Hour;
+    const timePerRevolution = timerMode === 'hours' ? 1 * Hour : 1 * Minute;
+    const deltaTime = (event.deltaAngle / math.TAU) * timePerRevolution;
     const newDuration = clampTime(timerInteractionRef.current.remainingTime + deltaTime);
     timerInteractionRef.current.remainingTime = newDuration;
     timerInteractionRef.current.hasChanged = event.wasDragged; // wasDragged indicates drag threshold was reached
@@ -157,8 +184,9 @@ const SpiralTimer = () => {
     const { remainingTime } = timerInteractionRef.current;
 
     if (event.wasDragged) {
-      // If dragged, round to the nearest minute and resume previous state
-      const newRemainingTime = math.roundTo(remainingTime, Minutes);
+      // If dragged, round to the nearest minute/second and resume previous state
+      const newRemainingTime =
+        timerMode === 'hours' ? math.roundTo(remainingTime, Minutes) : math.roundTo(remainingTime, Seconds);
       setTimerState(runningOrPaused(timerState.was, newRemainingTime));
     } else {
       // If tapped, toggle between running and paused
@@ -173,22 +201,34 @@ const SpiralTimer = () => {
       return;
     }
 
+    const stepSize =
+      timerMode === 'hours'
+        ? {
+            small: 1 * Minute,
+            medium: 5 * Minutes,
+            large: 1 * Hour,
+          }
+        : {
+            small: 5 * Seconds,
+            medium: 30 * Seconds,
+            large: 5 * Minutes,
+          };
     switch (event.key) {
       case 'Enter':
       case ' ':
         setTimerState(togglePaused(timerState));
         break;
       case 'ArrowUp':
-        setTimerState(changeTime(timerState, event.shiftKey ? 1 * Hour : 5 * Minutes));
+        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.large : stepSize.medium));
         break;
       case 'ArrowDown':
-        setTimerState(changeTime(timerState, event.shiftKey ? -1 * Hour : -5 * Minutes));
+        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.large : -stepSize.medium));
         break;
       case 'ArrowRight':
-        setTimerState(changeTime(timerState, event.shiftKey ? 5 * Minutes : 1 * Minute));
+        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.medium : stepSize.small));
         break;
       case 'ArrowLeft':
-        setTimerState(changeTime(timerState, event.shiftKey ? -5 * Minutes : -1 * Minute));
+        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.medium : -stepSize.small));
         break;
     }
   };
@@ -212,16 +252,22 @@ const SpiralTimer = () => {
     scheme.update(nextScheme);
   };
 
+  const toggleTimerMode = () => {
+    const nextMode = timerMode === 'hours' ? 'minutes' : 'hours';
+    setTimerMode(nextMode);
+  };
+
   // Wheel gesture handler for adding/subtracting time
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
       if (timerState.is === 'finished' || timerState.is === 'interacting') return;
       const delta = e.deltaY;
-      const change = e.shiftKey ? 5 * Minutes : 30 * Seconds;
+      const change =
+        timerMode === 'hours' ? (e.shiftKey ? 5 * Minutes : 30 * Seconds) : e.shiftKey ? 30 * Seconds : 5 * Seconds;
       setTimerState(changeTime(timerState, delta > 0 ? -change : change));
     },
-    [setTimerState, timerState],
+    [setTimerState, timerMode, timerState],
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
@@ -248,6 +294,7 @@ const SpiralTimer = () => {
             colorScheme={scheme.effective}
             initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
             onClockRadiusChange={setClockRadius}
+            mode={timerMode}
           />
         )}
         <JogDial
@@ -338,6 +385,14 @@ const SpiralTimer = () => {
 
       {/* Toolbar top */}
       <Toolbar isVisible={controlsAreVisible}>
+        <ToolbarButton
+          onClick={toggleTimerMode}
+          aria-label={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
+          title={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
+        >
+          {timerMode === 'hours' ? <ClockFading size={24} /> : <TimerReset size={24} />}
+        </ToolbarButton>
+
         <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
