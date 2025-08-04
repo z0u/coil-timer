@@ -19,7 +19,16 @@ import {
   Second,
   Seconds,
 } from './time-utils';
-import { changeTime, runningOrPaused, TimerState, TimerStateSchema, togglePaused } from './TimerState';
+import {
+  changeTime,
+  runningOrPaused,
+  TimerState,
+  TimerStateSchema,
+  toFinished,
+  togglePaused,
+  toInteracting,
+  toPaused,
+} from './TimerState';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
@@ -87,8 +96,7 @@ const SpiralTimer = () => {
       endTime = timerState.endTime;
       remainingTime = timerState.endTime - Date.now();
       if (remainingTime <= 0) {
-        // Timer finished - transition to finished state
-        setTimerState({ is: 'finished' });
+        setTimerState(toFinished(timerState));
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'finished') {
@@ -99,9 +107,8 @@ const SpiralTimer = () => {
       remainingTime = 0;
       endTime = null;
 
-      // Check if animation is complete
       if (animationComplete) {
-        setTimerState({ is: 'paused', remainingTime: 0 });
+        setTimerState(toPaused(timerState));
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'paused') {
@@ -111,7 +118,8 @@ const SpiralTimer = () => {
       throw new Error(`Unknown state: ${timerState}`);
     }
 
-    if (clockFace) clockFace.draw(remainingTime);
+    clockFace?.draw(remainingTime);
+
     if (srTimeEl && endTime != null) {
       srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
     }
@@ -131,7 +139,7 @@ const SpiralTimer = () => {
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
     timerInteractionRef.current = { remainingTime, hasChanged: false };
-    setTimerState({ is: 'interacting', was: timerState.is, remainingTime });
+    setTimerState(toInteracting(timerState));
   };
 
   const handleJogMove = (event: JogEvent) => {
@@ -217,7 +225,7 @@ const SpiralTimer = () => {
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
-  const controlsAreVisible = timerState.is === 'paused' || timerState.is === 'finished' || mustShowControls;
+  const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
 
   return (
     <div
