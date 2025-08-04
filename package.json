@@ -17,6 +17,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@thi.ng/color": "^5.7.56",
+    "@thi.ng/math": "^5.11.35",
     "@thi.ng/vectors": "^8.6.1",
     "clsx": "^2.1.1",
     "fast-deep-equal": "^3.1.3",

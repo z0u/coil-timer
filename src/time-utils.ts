@@ -52,9 +52,9 @@ export const formatDurationMinutes = (ms: number) => {
   const seconds = totalSeconds % 60;
 
   if (minutes > 0) {
-    return `${minutes}'${seconds.toString().padStart(2, '0')}"`;
+    return `${minutes}'${seconds.toString().padStart(2, '0')}`;
   }
-  return `${seconds}"`;
+  return `${seconds}`;
 };
 
 export const formatDurationMinutesSr = (ms: number) => {

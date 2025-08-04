@@ -21,16 +21,25 @@ import {
   Second,
   Seconds,
 } from './time-utils';
-import { TimerState } from './TimerState';
+import { TimerModeSchema } from './TimerMode';
+import {
+  changeTime,
+  runningOrPaused,
+  TimerState,
+  TimerStateSchema,
+  toFinished,
+  togglePaused,
+  toInteracting,
+  toPaused,
+} from './TimerState';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
 import { useColorScheme } from './useColorScheme';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
+import { useLocalStorage } from './useLocalStorage';
 import { useMultiClick } from './useMultiClick';
 import { useNonPassiveWheelHandler } from './useNonPassiveWheelHandler';
-import { usePersistentTimerState } from './usePersistentTimerState';
-import { usePersistentTimerMode } from './usePersistentTimerMode';
 import { useTemporaryState } from './useTemporaryState';
 import { useWakeLock } from './useWakeLock';
 
@@ -42,17 +51,26 @@ interface TimerInteraction {
 
 const OVERLAY_TIMEOUT = 5 * Second;
 
-const FPS: Record<TimerState['is'], Record<'hours' | 'minutes', number>> = {
-  interacting: { hours: 30, minutes: 30 },
-  running: { hours: 1, minutes: 4 }, // 4fps for minutes mode as specified
-  paused: { hours: 1 / 30, minutes: 1 / 30 }, // Twice per minute
+const FPS: Record<TimerState['is'], number> = {
+  interacting: 30,
+  running: 1,
+  paused: 1 / 30,
+  finished: 60,
+};
+
+const MINUTES_MODE_FPS = {
+  ...FPS,
+  running: 6, // mimic high-resolution stopwatches
 };
 
 const SpiralTimer = () => {
   // Device capabilities
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
-  const [timerState, setTimerState] = usePersistentTimerState();
-  const [timerMode, setTimerMode] = usePersistentTimerMode();
+  const [timerMode, setTimerMode] = useLocalStorage('coil-timer-mode', TimerModeSchema, 'hours');
+  const [timerState, setTimerState] = useLocalStorage('coil-timer-state', TimerStateSchema, {
+    is: 'paused',
+    remainingTime: 10 * Minutes,
+  });
   const scheme = useColorScheme();
 
   const [srTimeEl, setSrTimeEl] = useState<HTMLElement | null>(null);
@@ -74,34 +92,13 @@ const SpiralTimer = () => {
     setMustShowControls(true);
   }, [timerState.is, setMustShowControls]);
 
-  const clampTime = useCallback((time: number) => {
-    const maxTime = timerMode === 'hours' ? 24 * Hours : 20 * Minutes;
-    return math.clamp(time, 0, maxTime);
-  }, [timerMode]);
-
-  const setRunningOrPaused = useCallback(
-    (state: 'running' | 'paused', remainingTime: number) => {
-      const newRemainingTime = clampTime(remainingTime);
-      if (newRemainingTime <= 0 && state === 'running') {
-        state = 'paused';
-      }
-
-      if (state === 'running') {
-        const endTime = Date.now() + newRemainingTime;
-        setTimerState({ is: 'running', endTime });
-      } else {
-        setTimerState({ is: 'paused', remainingTime: newRemainingTime });
-      }
+  const clampTime = useCallback(
+    (time: number) => {
+      const maxTime = timerMode === 'hours' ? 24 * Hours : 20 * Minutes;
+      return math.clamp(time, 0, maxTime);
     },
-    [setTimerState, clampTime],
+    [timerMode],
   );
-
-  const toggleRunningOrPaused = useCallback(() => {
-    if (timerState.is === 'interacting') return;
-    const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
-    const nextState = timerState.is === 'running' ? 'paused' : 'running';
-    setRunningOrPaused(nextState, remainingTime);
-  }, [timerState, setRunningOrPaused]);
 
   const runFrame = useCallback(() => {
     let remainingTime: number;
@@ -114,7 +111,19 @@ const SpiralTimer = () => {
       endTime = timerState.endTime;
       remainingTime = timerState.endTime - Date.now();
       if (remainingTime <= 0) {
-        setRunningOrPaused('paused', 0);
+        setTimerState(toFinished(timerState));
+        return; // State change will re-run the effect.
+      }
+    } else if (timerState.is === 'finished') {
+      // Handle victory animation
+      const deltaTime = 16.67; // Assume ~60 FPS, so ~16.67ms per frame
+
+      const animationComplete = clockFace?.stepVictory(deltaTime) ?? false;
+      remainingTime = 0;
+      endTime = null;
+
+      if (animationComplete) {
+        setTimerState(toPaused(timerState));
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'paused') {
@@ -124,14 +133,16 @@ const SpiralTimer = () => {
       throw new Error(`Unknown state: ${timerState}`);
     }
 
-    if (clockFace) clockFace.setTime(remainingTime);
-    if (srTimeEl) {
+    clockFace?.draw(remainingTime);
+
+    if (srTimeEl && endTime != null) {
       if (timerMode === 'hours') {
         srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
       } else {
         srTimeEl.textContent = `${formatDurationMinutesSr(math.roundTo(remainingTime, Seconds))} (${formatTimeSr(endTime)})`;
       }
     }
+
     if (timeEl) {
       if (timerMode === 'hours') {
         timeEl.textContent = zerosAsOs(formatDuration(math.roundTo(remainingTime, Minutes)));
@@ -139,35 +150,22 @@ const SpiralTimer = () => {
         timeEl.textContent = zerosAsOs(formatDurationMinutes(math.roundTo(remainingTime, Seconds)));
       }
     }
-    if (endTimeEl) {
+
+    if (endTimeEl && endTime != null) {
       endTimeEl.textContent = zerosAsOs(formatTime(endTime));
     }
-  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setRunningOrPaused, timerMode]);
+  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setTimerState, timerMode]);
 
-  useAnimation({ runFrame, fps: FPS[timerState.is][timerMode] });
-
-  const addTime = useCallback(
-    (change: number) => {
-      if (timerState.is === 'interacting') {
-        // Do nothing: already dragging
-        setTimerState({ ...timerState });
-        return;
-      }
-      const remainingTime = timerState.is === 'paused' ? timerState.remainingTime : timerState.endTime - Date.now();
-      const newRemainingTime = clampTime(remainingTime + change);
-
-      setRunningOrPaused(timerState.is, newRemainingTime);
-    },
-    [timerState, setTimerState, setRunningOrPaused, clampTime],
-  );
+  const fpsMap = timerMode === 'hours' ? FPS : MINUTES_MODE_FPS;
+  useAnimation({ runFrame, fps: fpsMap[timerState.is] });
 
   // JogDial interaction handlers
   const handleJogStart = () => {
-    if (timerState.is === 'interacting') return;
+    if (timerState.is === 'interacting' || timerState.is === 'finished') return;
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
     timerInteractionRef.current = { remainingTime, hasChanged: false };
-    setTimerState({ is: 'interacting', was: timerState.is, remainingTime });
+    setTimerState(toInteracting(timerState));
   };
 
   const handleJogMove = (event: JogEvent) => {
@@ -187,55 +185,50 @@ const SpiralTimer = () => {
 
     if (event.wasDragged) {
       // If dragged, round to the nearest minute/second and resume previous state
-      const roundedTime = timerMode === 'hours' 
-        ? math.roundTo(remainingTime, Minutes)
-        : math.roundTo(remainingTime, Seconds);
-      setRunningOrPaused(timerState.was, roundedTime);
+      const newRemainingTime =
+        timerMode === 'hours' ? math.roundTo(remainingTime, Minutes) : math.roundTo(remainingTime, Seconds);
+      setTimerState(runningOrPaused(timerState.was, newRemainingTime));
     } else {
       // If tapped, toggle between running and paused
       const nextState = timerState.was === 'running' ? 'paused' : 'running';
-      setRunningOrPaused(nextState, remainingTime);
+      setTimerState(runningOrPaused(nextState, remainingTime));
     }
   };
 
   const handleJogKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (timerState.is === 'interacting') {
+    if (timerState.is === 'interacting' || timerState.is === 'finished') {
       // Prevent simultaneous interaction
       return;
     }
 
+    const stepSize =
+      timerMode === 'hours'
+        ? {
+            small: 1 * Minute,
+            medium: 5 * Minutes,
+            large: 1 * Hour,
+          }
+        : {
+            small: 5 * Seconds,
+            medium: 30 * Seconds,
+            large: 5 * Minutes,
+          };
     switch (event.key) {
       case 'Enter':
       case ' ':
-        toggleRunningOrPaused();
+        setTimerState(togglePaused(timerState));
         break;
       case 'ArrowUp':
-        if (timerMode === 'hours') {
-          addTime(event.shiftKey ? 1 * Hour : 5 * Minutes);
-        } else {
-          addTime(event.shiftKey ? 5 * Minutes : 30 * Seconds);
-        }
+        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.large : stepSize.medium));
         break;
       case 'ArrowDown':
-        if (timerMode === 'hours') {
-          addTime(event.shiftKey ? -1 * Hour : -5 * Minutes);
-        } else {
-          addTime(event.shiftKey ? -5 * Minutes : -30 * Seconds);
-        }
+        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.large : -stepSize.medium));
         break;
       case 'ArrowRight':
-        if (timerMode === 'hours') {
-          addTime(event.shiftKey ? 5 * Minutes : 1 * Minute);
-        } else {
-          addTime(event.shiftKey ? 1 * Minute : 5 * Seconds);
-        }
+        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.medium : stepSize.small));
         break;
       case 'ArrowLeft':
-        if (timerMode === 'hours') {
-          addTime(event.shiftKey ? -5 * Minutes : -1 * Minute);
-        } else {
-          addTime(event.shiftKey ? -1 * Minute : -5 * Seconds);
-        }
+        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.medium : -stepSize.small));
         break;
     }
   };
@@ -268,13 +261,13 @@ const SpiralTimer = () => {
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
+      if (timerState.is === 'finished' || timerState.is === 'interacting') return;
       const delta = e.deltaY;
-      const change = timerMode === 'hours' 
-        ? (e.shiftKey ? 5 * Minutes : 30 * Seconds)
-        : (e.shiftKey ? 30 * Seconds : 5 * Seconds);
-      addTime(delta > 0 ? -change : change);
+      const change =
+        timerMode === 'hours' ? (e.shiftKey ? 5 * Minutes : 30 * Seconds) : e.shiftKey ? 30 * Seconds : 5 * Seconds;
+      setTimerState(changeTime(timerState, delta > 0 ? -change : change));
     },
-    [addTime, timerMode],
+    [setTimerState, timerMode, timerState],
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
@@ -397,11 +390,7 @@ const SpiralTimer = () => {
           aria-label={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
           title={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
         >
-          {timerMode === 'hours' ? (
-            <ClockFading size={24} />
-          ) : (
-            <TimerReset size={24} />
-          )}
+          {timerMode === 'hours' ? <ClockFading size={24} /> : <TimerReset size={24} />}
         </ToolbarButton>
 
         <ToolbarButton
