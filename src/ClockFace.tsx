@@ -1,7 +1,7 @@
 import * as math from '@thi.ng/math';
 import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, useRef } from 'react';
 import { Hours } from './time-utils';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
@@ -23,7 +23,7 @@ const MINOR_TICK_WIDTH = 0.016;
 const TRACK_WIDTH = 0.025;
 
 export type ClockFaceHandle = {
-  setTime: (time: number) => void;
+  draw: (time: number) => void;
   stepVictory: (dt: number) => boolean; // Returns true if animation is complete
 };
 
@@ -54,7 +54,7 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
   ({ className, colorScheme, onClockRadiusChange, initialTime }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-    const [victoryAnimation, setVictoryAnimation] = useState<VictoryAnimationState>({
+    const victoryAnimation = useRef<VictoryAnimationState>({
       frameTime: 0,
       isActive: false,
     });
@@ -93,50 +93,36 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           ctx.scale(dimensions.radius, dimensions.radius);
           drawRevolutions(ctx, tracks, theme.stroke);
           drawClockTicks(ctx, finalTrack, theme.text);
-          
+
           // Draw victory animation if active
-          if (victoryAnimation.isActive) {
-            drawVictoryAnimation(ctx, finalTrack, victoryAnimation.frameTime);
+          if (victoryAnimation.current.isActive) {
+            drawVictoryAnimation(ctx, finalTrack, victoryAnimation.current.frameTime);
           }
         } finally {
           ctx.restore();
         }
       },
-      [canvas, dimensions, theme, victoryAnimation.frameTime, victoryAnimation.isActive],
+      [canvas, dimensions, theme],
     );
 
     useImperativeHandle(
       ref,
       () => ({
-        setTime: (time) => drawClockFace(time),
+        draw: (time) => drawClockFace(time),
         stepVictory: (dt: number) => {
-          setVictoryAnimation(prev => {
-            let newFrameTime = prev.frameTime;
-            let isActive = prev.isActive;
-            
-            if (!prev.isActive) {
-              // Start the animation
-              isActive = true;
-              newFrameTime = 0;
-            }
-            
-            if (isActive) {
-              newFrameTime += dt;
-              if (newFrameTime >= 1000) {
-                // Animation completed
-                isActive = false;
-                newFrameTime = 0;
-              }
-            }
-            
-            return { frameTime: newFrameTime, isActive };
-          });
-          
-          // We need to return animationComplete from the current state, not from the setter
-          return victoryAnimation.frameTime + dt >= 1000;
+          let { frameTime } = victoryAnimation.current;
+          frameTime += dt;
+          // We need to return animationComplete from the current state
+          if (frameTime >= 1000) {
+            victoryAnimation.current = { frameTime: 0, isActive: false };
+            return true;
+          } else {
+            victoryAnimation.current = { frameTime, isActive: true };
+            return false;
+          }
         },
       }),
-      [drawClockFace, victoryAnimation.frameTime],
+      [drawClockFace],
     );
 
     useEffect(() => {
@@ -158,12 +144,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       drawClockFace(initialTime);
     }, [drawClockFace, initialTime]);
 
-    useEffect(() => {
-      // Redraw when victory animation state changes
-      if (victoryAnimation.isActive) {
-        drawClockFace(0);
-      }
-    }, [victoryAnimation, drawClockFace]);
+    // Redraw when victory animation is active (polling or external trigger should call drawClockFace)
+    // No-op effect here; animation should be advanced and drawn by external timer/raf
 
     return <canvas ref={setCanvas} className={clsx('w-full h-full', className)} />;
   },
@@ -336,30 +318,30 @@ const drawClockTicks = (ctx: CanvasRenderingContext2D, finalTrack: Track, tickCo
 const drawVictoryAnimation = (ctx: CanvasRenderingContext2D, finalTrack: Track, frameTime: number) => {
   const animationProgress = frameTime / 1000; // Convert to 0-1 range
   const radius = finalTrack.radius;
-  
+
   // Calculate head and tail positions using ease function
   const headProgress = ease(Math.min(animationProgress * 2, 1)); // Head moves first half
   const tailStart = Math.max(0, animationProgress - 0.5) * 2; // Tail starts halfway
   const tailProgress = ease(tailStart);
-  
+
   // Convert to angles (negative for CCW from top)
   const headAngle = -headProgress * math.TAU;
   const tailAngle = -tailProgress * math.TAU;
-  
+
   // Color interpolation from red to white
   const colorProgress = animationProgress;
   const red = Math.round(255);
   const green = Math.round(255 * colorProgress);
   const blue = Math.round(255 * colorProgress);
   const color = `rgb(${red}, ${green}, ${blue})`;
-  
+
   ctx.save();
   try {
     ctx.strokeStyle = color;
     ctx.lineWidth = TRACK_WIDTH;
     ctx.lineCap = 'round';
     ctx.globalAlpha = 1.0;
-    
+
     // Draw the victory arc from tail to head
     if (headAngle < tailAngle) {
       ctx.beginPath();
