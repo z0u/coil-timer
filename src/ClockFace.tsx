@@ -102,7 +102,7 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           ctx.restore();
         }
       },
-      [canvas, dimensions, theme],
+      [canvas, dimensions, theme, victoryAnimation.frameTime, victoryAnimation.isActive],
     );
 
     useImperativeHandle(
@@ -110,8 +110,6 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
       () => ({
         setTime: (time) => drawClockFace(time),
         stepVictory: (dt: number) => {
-          let animationComplete = false;
-          
           setVictoryAnimation(prev => {
             let newFrameTime = prev.frameTime;
             let isActive = prev.isActive;
@@ -128,7 +126,6 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
                 // Animation completed
                 isActive = false;
                 newFrameTime = 0;
-                animationComplete = true;
               }
             }
             
@@ -139,7 +136,7 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           return victoryAnimation.frameTime + dt >= 1000;
         },
       }),
-      [drawClockFace],
+      [drawClockFace, victoryAnimation.frameTime],
     );
 
     useEffect(() => {
