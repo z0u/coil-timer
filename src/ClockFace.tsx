@@ -359,7 +359,7 @@ const drawVictoryAnimation = (
   const headProgress = ease(animationProgress / (1 - tailDelay));
 
   const tailProgress = ease(animationProgress / (1 - tailDelay) - tailDelay);
-  const color = col.mix([], col.srgb(theme.stroke), col.srgb(theme.text), ease(animationProgress));
+  const color = col.mix([], col.rgb(theme.stroke), col.rgb(theme.text), ease(animationProgress));
 
   // Convert to angles (negative for CCW from top)
   const headAngle = -headProgress * math.TAU;
