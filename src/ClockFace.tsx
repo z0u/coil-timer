@@ -291,19 +291,15 @@ const drawClockTicks = ({
       }
 
       // Calculate proximity for alpha blending
-      let angleDist: number;
-      if (finalTrack.rev === 0 && finalTrack.angle < math.PI) {
-        // Special case: don't use math.angleDist when the final track is also track 0, i.e. it is the last/only track.
-        // This prevents ticks < 0 from showing.
-        angleDist = Math.abs(finalTrack.angle - (angle + math.TAU / (tickCount * 2)));
-      } else {
-        // For tracks > 0, treat the difference as cyclic to show ticks on both sides of the start.
-        angleDist = math.angleDist(
-          finalTrack.angle,
-          angle + proximal / 2, // Add a bit to brighten future ticks more
-        );
-      }
-
+      // Add a bit to the angle to emphasize future ticks
+      // Using the unwrapped distance prevents ticks < 0 from showing;
+      // Using the wrapped distance allows ticks on both sides of 0 to show.
+      const unwrappedAngleDist = Math.abs(finalTrack.angle - (angle + proximal / 2));
+      const wrappedAngleDist = math.angleDist(finalTrack.angle, angle + proximal / 2);
+      const angleDist =
+        finalTrack.rev > 0
+          ? wrappedAngleDist
+          : math.mix(unwrappedAngleDist, wrappedAngleDist, finalTrack.angle / math.TAU);
       const proximity = math.clamp(1 - angleDist / proximal, 0, 1);
 
       ctx.save();
