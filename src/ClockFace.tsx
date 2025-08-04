@@ -359,7 +359,13 @@ const drawVictoryAnimation = (
   const headProgress = ease(animationProgress / (1 - tailDelay));
 
   const tailProgress = ease(animationProgress / (1 - tailDelay) - tailDelay);
-  const color = col.mix([], col.rgb(theme.stroke), col.rgb(theme.text), ease(animationProgress));
+
+  let color: col.Color | null = null;
+  try {
+    color = col.mix([], col.rgb(theme.stroke), col.rgb(theme.text), ease(animationProgress));
+  } catch (e) {
+    console.error(`Failed to mix colors: ${e}`);
+  }
 
   // Convert to angles (negative for CCW from top)
   const headAngle = -headProgress * math.TAU;
@@ -367,7 +373,16 @@ const drawVictoryAnimation = (
 
   ctx.save();
   try {
-    ctx.strokeStyle = col.css(color);
+    if (color != null) {
+      try {
+        ctx.strokeStyle = col.css(color, col.CSS_LEVEL4);
+      } catch (e) {
+        console.error(`Failed to serialize color: ${e}`);
+        ctx.strokeStyle = theme.text;
+      }
+    } else {
+      ctx.strokeStyle = theme.text;
+    }
     ctx.lineWidth = TRACK_WIDTH;
     ctx.lineCap = 'round';
     ctx.globalAlpha = 1.0;
