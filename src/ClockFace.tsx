@@ -276,20 +276,23 @@ const drawClockTicks = ({
 
       let isMajor: boolean;
       let isPrimary: boolean;
+      let proximal: number;
 
       if (mode === 'hours') {
         // For hours mode: major every 3 ticks (quarters), primary at 0 (top)
         isMajor = i % 3 === 0;
         isPrimary = i === 0;
+        proximal = math.rad(30);
       } else {
         // For minutes mode: major every 5 ticks (every 5 minutes), primary at 0 (top)
         isMajor = i % 5 === 0;
         isPrimary = i === 0;
+        proximal = math.rad(12);
       }
 
       // Calculate proximity for alpha blending
       let angleDist: number;
-      if (finalTrack.rev === 0) {
+      if (finalTrack.rev === 0 && finalTrack.angle < math.PI) {
         // Special case: don't use math.angleDist when the final track is also track 0, i.e. it is the last/only track.
         // This prevents ticks < 0 from showing.
         angleDist = Math.abs(finalTrack.angle - (angle + math.TAU / (tickCount * 2)));
@@ -297,10 +300,11 @@ const drawClockTicks = ({
         // For tracks > 0, treat the difference as cyclic to show ticks on both sides of the start.
         angleDist = math.angleDist(
           finalTrack.angle,
-          angle + math.TAU / (tickCount * 2), // Add a bit to brighten future ticks more
+          angle + proximal / 2, // Add a bit to brighten future ticks more
         );
       }
-      const proximity = math.clamp(1 - angleDist / math.rad(30), 0, 1);
+
+      const proximity = math.clamp(1 - angleDist / proximal, 0, 1);
 
       ctx.save();
       ctx.rotate(angle - math.PI); // Start from top
