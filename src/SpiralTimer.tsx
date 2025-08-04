@@ -83,7 +83,8 @@ const SpiralTimer = () => {
         const endTime = Date.now() + newRemainingTime;
         setTimerState({ is: 'running', endTime });
       } else {
-        // When setting to paused, only save the duration if we don't already have one
+        // When setting to paused, preserve existing savedDuration if it exists
+        // Only set savedDuration to current time if we don't have one yet
         const savedDuration = (timerState.is === 'paused' && 'savedDuration' in timerState && timerState.savedDuration !== undefined) ? 
           timerState.savedDuration : newRemainingTime;
         setTimerState({ is: 'paused', remainingTime: newRemainingTime, savedDuration });
@@ -145,9 +146,10 @@ const SpiralTimer = () => {
       const newRemainingTime = clampTime(remainingTime + change);
 
       if (timerState.is === 'paused') {
-        // When adjusting a paused timer, preserve the existing savedDuration
+        // When adjusting a paused timer with keyboard, preserve the existing savedDuration
+        // Don't update it - this is a temporary adjustment, not a committed change
         const savedDuration = 'savedDuration' in timerState && timerState.savedDuration !== undefined ? 
-          timerState.savedDuration : newRemainingTime;
+          timerState.savedDuration : timerState.remainingTime; // fallback to current time if no saved duration
         setTimerState({ is: 'paused', remainingTime: newRemainingTime, savedDuration });
       } else {
         setRunningOrPaused(timerState.is, newRemainingTime);
