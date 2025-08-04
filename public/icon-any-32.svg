@@ -6,7 +6,6 @@
       <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0004" />
     </filter>
   </defs>
-  <rect x="0" y="0" width="192" height="192" fill="white" />
   <g opacity="1" filter="url(#shadow)">
     <circle cx="96" cy="96" r="60" fill="none" stroke="oklch(0.58 0.24 28.48)" stroke-width="8" opacity="1" />
     <path
