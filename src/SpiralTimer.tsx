@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
+import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset, Undo } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -22,6 +22,7 @@ import {
   Seconds,
 } from './time-utils';
 import { TimerModeSchema } from './TimerMode';
+import { TimerRestorePointSchema } from './TimerRestorePoint';
 import {
   changeTime,
   runningOrPaused,
@@ -69,6 +70,10 @@ const SpiralTimer = () => {
   const [timerMode, setTimerMode] = useLocalStorage('coil-timer-mode', TimerModeSchema, 'hours');
   const [timerState, setTimerState] = useLocalStorage('coil-timer-state', TimerStateSchema, {
     is: 'paused',
+    remainingTime: 10 * Minutes,
+  });
+  const [restorePoint, setRestorePoint] = useLocalStorage('coil-timer-restore-point', TimerRestorePointSchema, {
+    mode: 'hours',
     remainingTime: 10 * Minutes,
   });
   const scheme = useColorScheme();
@@ -187,6 +192,9 @@ const SpiralTimer = () => {
       // If dragged, round to the nearest minute/second and resume previous state
       const newRemainingTime =
         timerMode === 'hours' ? math.roundTo(remainingTime, Minutes) : math.roundTo(remainingTime, Seconds);
+      if (timerState.was === 'paused') {
+        setRestorePoint({ mode: timerMode, remainingTime: newRemainingTime });
+      }
       setTimerState(runningOrPaused(timerState.was, newRemainingTime));
     } else {
       // If tapped, toggle between running and paused
@@ -213,23 +221,30 @@ const SpiralTimer = () => {
             medium: 30 * Seconds,
             large: 5 * Minutes,
           };
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      setTimerState(togglePaused(timerState));
+      return;
+    }
+
+    let nextState: TimerState | null = null;
     switch (event.key) {
-      case 'Enter':
-      case ' ':
-        setTimerState(togglePaused(timerState));
-        break;
       case 'ArrowUp':
-        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.large : stepSize.medium));
+        nextState = changeTime(timerState, event.shiftKey ? stepSize.large : stepSize.medium);
         break;
       case 'ArrowDown':
-        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.large : -stepSize.medium));
+        nextState = changeTime(timerState, event.shiftKey ? -stepSize.large : -stepSize.medium);
         break;
       case 'ArrowRight':
-        setTimerState(changeTime(timerState, event.shiftKey ? stepSize.medium : stepSize.small));
+        nextState = changeTime(timerState, event.shiftKey ? stepSize.medium : stepSize.small);
         break;
       case 'ArrowLeft':
-        setTimerState(changeTime(timerState, event.shiftKey ? -stepSize.medium : -stepSize.small));
+        nextState = changeTime(timerState, event.shiftKey ? -stepSize.medium : -stepSize.small);
         break;
+    }
+    if (nextState) {
+      if (nextState.is === 'paused') setRestorePoint({ mode: timerMode, remainingTime: nextState.remainingTime });
+      setTimerState(nextState);
     }
   };
 
@@ -255,6 +270,12 @@ const SpiralTimer = () => {
   const toggleTimerMode = () => {
     const nextMode = timerMode === 'hours' ? 'minutes' : 'hours';
     setTimerMode(nextMode);
+  };
+
+  const resetToRestorePoint = () => {
+    if (timerState.is !== 'paused') return;
+    setTimerMode(restorePoint.mode);
+    setTimerState({ is: 'paused', remainingTime: restorePoint.remainingTime });
   };
 
   // Wheel gesture handler for adding/subtracting time
@@ -386,6 +407,14 @@ const SpiralTimer = () => {
       {/* Toolbar top */}
       <Toolbar isVisible={controlsAreVisible}>
         <ToolbarButton
+          aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title="Fullscreen"
+          onClick={toggleFullscreen}
+        >
+          <Scan size={24} />
+        </ToolbarButton>
+
+        <ToolbarButton
           onClick={toggleTimerMode}
           aria-label={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
           title={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
@@ -394,11 +423,12 @@ const SpiralTimer = () => {
         </ToolbarButton>
 
         <ToolbarButton
-          aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
-          title="Fullscreen"
-          onClick={toggleFullscreen}
+          onClick={resetToRestorePoint}
+          aria-label={`Reset to restore point`}
+          title={`Restore`}
+          disabled={timerState.is !== 'paused'}
         >
-          <Scan size={24} />
+          <Undo size={24} />
         </ToolbarButton>
 
         <ToolbarButton
