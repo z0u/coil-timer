@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset, Undo } from 'lucide-react';
+import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -73,8 +73,8 @@ const SpiralTimer = () => {
     remainingTime: 10 * Minutes,
   });
   const [restorePoint, setRestorePoint] = useLocalStorage('coil-timer-restore-point', TimerRestorePointSchema, {
-    mode: 'hours',
-    remainingTime: 10 * Minutes,
+    minutes: { remainingTime: 5 * Seconds },
+    hours: { remainingTime: 10 * Minutes },
   });
   const scheme = useColorScheme();
 
@@ -193,13 +193,22 @@ const SpiralTimer = () => {
       const newRemainingTime =
         timerMode === 'hours' ? math.roundTo(remainingTime, Minutes) : math.roundTo(remainingTime, Seconds);
       if (timerState.was === 'paused') {
-        setRestorePoint({ mode: timerMode, remainingTime: newRemainingTime });
+        setRestorePoint({
+          ...restorePoint,
+          [timerMode]: { remainingTime: newRemainingTime },
+        });
       }
       setTimerState(runningOrPaused(timerState.was, newRemainingTime));
     } else {
       // If tapped, toggle between running and paused
-      const nextState = timerState.was === 'running' ? 'paused' : 'running';
-      setTimerState(runningOrPaused(nextState, remainingTime));
+      if (timerState.was === 'paused' && remainingTime === 0) {
+        // Click happened after timer had finished
+        // TODO: Can also happen if user sets time to zero while paused. Is that a problem?
+        setTimerState(runningOrPaused('paused', restorePoint[timerMode].remainingTime));
+      } else {
+        const nextState = timerState.was === 'running' ? 'paused' : 'running';
+        setTimerState(runningOrPaused(nextState, remainingTime));
+      }
     }
   };
 
@@ -243,7 +252,12 @@ const SpiralTimer = () => {
         break;
     }
     if (nextState) {
-      if (nextState.is === 'paused') setRestorePoint({ mode: timerMode, remainingTime: nextState.remainingTime });
+      if (nextState.is === 'paused') {
+        setRestorePoint({
+          ...restorePoint,
+          [timerMode]: { remainingTime: nextState.remainingTime },
+        });
+      }
       setTimerState(nextState);
     }
   };
@@ -270,12 +284,6 @@ const SpiralTimer = () => {
   const toggleTimerMode = () => {
     const nextMode = timerMode === 'hours' ? 'minutes' : 'hours';
     setTimerMode(nextMode);
-  };
-
-  const resetToRestorePoint = () => {
-    if (timerState.is !== 'paused') return;
-    setTimerMode(restorePoint.mode);
-    setTimerState({ is: 'paused', remainingTime: restorePoint.remainingTime });
   };
 
   // Wheel gesture handler for adding/subtracting time
@@ -420,15 +428,6 @@ const SpiralTimer = () => {
           title={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
         >
           {timerMode === 'hours' ? <ClockFading size={24} /> : <TimerReset size={24} />}
-        </ToolbarButton>
-
-        <ToolbarButton
-          onClick={resetToRestorePoint}
-          aria-label={`Reset to restore point`}
-          title={`Restore`}
-          disabled={timerState.is !== 'paused'}
-        >
-          <Undo size={24} />
         </ToolbarButton>
 
         <ToolbarButton
