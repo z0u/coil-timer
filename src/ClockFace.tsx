@@ -96,11 +96,11 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
             isFinishing = drawVictoryAnimation(ctx, finalTrack, victoryAnimation.current, theme);
           }
 
-          let primaryTickStyle: 'square' | 'triangle' | 'exclamation';
+          let primaryTickStyle: 'pause' | 'triangle' | 'exclamation';
           const isAnyTimeRemaining = finalTrack.rev > 0 || finalTrack.angle > 0;
           if (!isAnyTimeRemaining || isFinishing) primaryTickStyle = 'exclamation';
           else if (isRunning) primaryTickStyle = 'triangle';
-          else primaryTickStyle = 'square';
+          else primaryTickStyle = 'pause';
 
           drawClockTicks({ ctx, finalTrack, theme, mode, primaryTickStyle });
         } finally {
@@ -260,7 +260,7 @@ const drawClockTicks = ({
   finalTrack: Track;
   theme: ClockTheme;
   mode: TimerMode;
-  primaryTickStyle: 'square' | 'triangle' | 'exclamation';
+  primaryTickStyle: 'pause' | 'triangle' | 'exclamation';
 }) => {
   ctx.save();
   try {
@@ -307,18 +307,23 @@ const drawClockTicks = ({
       ctx.rotate(angle - math.PI); // Start from top
       ctx.globalAlpha = isPrimary ? 1 : proximity * 0.9;
       if (isPrimary) {
-        if (primaryTickStyle === 'square') {
-          // Draw a triangle pointing in
+        if (primaryTickStyle === 'pause') {
+          // Draw a pause icon
           ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
           ctx.beginPath();
-          const width = PRIMARY_TICK_LENGTH;
-          ctx.moveTo(-width / 2, TICK_OUTER_DIA - width);
-          ctx.lineTo(-width / 2, TICK_OUTER_DIA);
-          ctx.lineTo(width / 2, TICK_OUTER_DIA);
-          ctx.lineTo(width / 2, TICK_OUTER_DIA - width);
-          ctx.closePath();
-          ctx.stroke();
-          ctx.fill();
+          const length = PRIMARY_TICK_LENGTH;
+          const width = PRIMARY_TICK_WIDTH_FINISHED;
+          const barWidth = width / 6;
+          const x0 = -width / 2;
+          for (const side of [-1, 1]) {
+            ctx.moveTo(side * x0, TICK_OUTER_DIA - length);
+            ctx.lineTo(side * x0, TICK_OUTER_DIA);
+            ctx.lineTo(side * (x0 - barWidth), TICK_OUTER_DIA);
+            ctx.lineTo(side * (x0 - barWidth), TICK_OUTER_DIA - length);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
+          }
         } else if (primaryTickStyle === 'exclamation') {
           // Draw an exclamation mark !
           ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
