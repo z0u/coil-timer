@@ -6,6 +6,7 @@ interface BaseToolbarButtonProps {
   title: string;
   className?: string;
   disabled?: boolean;
+  highlight?: boolean;
   children: ReactNode;
   isVisible?: boolean | null;
   onClick?: (e: React.MouseEvent) => void;
@@ -26,11 +27,24 @@ interface LinkProps extends BaseToolbarButtonProps {
 type ToolbarButtonProps = ButtonProps | LinkProps;
 
 export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, ToolbarButtonProps>(
-  ({ 'aria-label': ariaLabel, title, className, disabled = false, children, isVisible, onClick, ...props }, ref) => {
+  (
+    {
+      'aria-label': ariaLabel,
+      title,
+      className,
+      disabled = false,
+      highlight = false,
+      children,
+      isVisible,
+      onClick,
+      ...props
+    },
+    ref,
+  ) => {
     const baseClasses = clsx(
       'cursor-pointer text-gray-700 dark:text-gray-400',
       'transition-[filter,opacity] duration-200 translate-x-[inherit]',
-      disabled ? 'filter-[opacity(30%)]' : 'filter-[opacity(100%)]',
+      disabled && !highlight ? 'filter-[opacity(30%)]' : 'filter-[opacity(100%)]',
       isVisible == null ? 'opacity-[inherit]' : isVisible ? 'opacity-100' : 'opacity-0',
       disabled ? 'pointer-events-none' : 'pointer-events-auto',
       'transform active:scale-95',

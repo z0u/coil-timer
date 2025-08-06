@@ -104,8 +104,13 @@ const SpiralTimer = () => {
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
 
+  const hasMounted = useRef(false);
   useEffect(() => {
-    setWasRecentlySaved(true);
+    if (hasMounted.current) {
+      setWasRecentlySaved(true);
+    } else {
+      hasMounted.current = true;
+    }
   }, [restorePoint, setWasRecentlySaved]);
 
   useEffect(() => {
@@ -244,7 +249,14 @@ const SpiralTimer = () => {
     }
 
     if (event.key === 'Enter' || event.key === ' ') {
-      setTimerState(togglePaused(timerState));
+      // Toggle between running and paused
+      if (timerState.is === 'paused' && timerState.remainingTime === 0) {
+        // Activated after timer had finished
+        restoreFromLastSetDuration();
+      } else {
+        setTimerState(togglePaused(timerState));
+      }
+
       return;
     }
 
@@ -492,6 +504,7 @@ const SpiralTimer = () => {
           aria-label="Restore from last set duration"
           title="Reset"
           disabled={isOrWas !== 'paused' || isAtRestorePoint}
+          highlight={wasRecentlySaved}
           className="relative"
         >
           <RotateCw className="transform -rotate-45" size={24} />
