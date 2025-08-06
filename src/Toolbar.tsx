@@ -2,15 +2,26 @@ import clsx from 'clsx';
 import { ReactNode, useEffect, useRef } from 'react';
 
 interface ToolbarProps {
+  ariaLabel: string;
   isVisible: boolean;
   isOpen?: boolean;
   onToggle?: () => void;
   trigger?: ReactNode;
   children: ReactNode;
   className?: string;
+  position?: 'top-right' | 'bottom-left' | 'bottom-right';
 }
 
-export const Toolbar = ({ isVisible, isOpen = true, onToggle, trigger, children, className }: ToolbarProps) => {
+export const Toolbar = ({
+  ariaLabel,
+  isVisible,
+  isOpen = true,
+  onToggle,
+  trigger,
+  children,
+  className,
+  position = 'top-right',
+}: ToolbarProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
 
   // Handle keyboard navigation
@@ -62,12 +73,18 @@ export const Toolbar = ({ isVisible, isOpen = true, onToggle, trigger, children,
   return (
     <nav
       data-toolbar
+      aria-label={ariaLabel}
       className={clsx(
-        'absolute top-6 right-6 portrait:inset-x-6',
+        'absolute',
+        'flex gap-6',
+        position === 'bottom-left'
+          ? 'bottom-6 left-6 flex-col-reverse portrait:flex-row'
+          : position === 'bottom-right'
+            ? 'bottom-6 right-6 flex-col-reverse portrait:flex-row-reverse'
+            : 'top-6 right-6 flex-col portrait:flex-row-reverse',
         'transition-opacity duration-500',
         isVisible ? 'opacity-50' : 'opacity-0',
         'hover:opacity-100',
-        'flex gap-6 flex-col portrait:flex-row-reverse',
         className,
       )}
     >

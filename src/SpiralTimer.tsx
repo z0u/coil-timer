@@ -192,7 +192,7 @@ const SpiralTimer = () => {
     if (event.wasDragged) {
       // If dragged, round to the nearest minute/second and resume previous state
       const newRemainingTime = clampDuration(timerMode, remainingTime);
-      if (timerState.was === 'paused') {
+      if (timerState.was === 'paused' && remainingTime > 0) {
         setRestorePoint({
           ...restorePoint,
           [timerMode]: { duration: newRemainingTime },
@@ -319,7 +319,7 @@ const SpiralTimer = () => {
             ref={setClockFace}
             className={clsx(
               // These are queried by the clock face to theme the canvas
-              'stroke-red-500 dark:stroke-red-600', // Tracks
+              'stroke-red-500 dark:stroke-red-500', // Tracks
               'text-gray-600 dark:text-gray-200', // Ticks
               'bg-white dark:bg-black', // Background
               'transform',
@@ -420,8 +420,18 @@ const SpiralTimer = () => {
 
       <HelpScreen
         isHelpVisible={isHelpVisible}
-        isPaused={timerState.is === 'paused'}
-        controlsAreVisible={controlsAreVisible}
+        bgAction={timerState.is === 'running' ? 'controls' : null}
+        jogDialAction={
+          timerState.is === 'interacting'
+            ? null
+            : timerState.is === 'running'
+              ? 'pause'
+              : timerState.is === 'paused'
+                ? timerState.remainingTime > 0
+                  ? 'resume'
+                  : 'reset'
+                : null
+        }
         onCloseClicked={() => {
           setIsHelpVisible(false);
           // Focus jog dial after help closes
@@ -429,16 +439,7 @@ const SpiralTimer = () => {
         }}
       />
 
-      {/* Toolbar top */}
-      <Toolbar isVisible={controlsAreVisible}>
-        <ToolbarButton
-          aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
-          title="Fullscreen"
-          onClick={toggleFullscreen}
-        >
-          <Scan size={24} />
-        </ToolbarButton>
-
+      <Toolbar ariaLabel="Timer controls" isVisible={controlsAreVisible}>
         <ToolbarButton
           onClick={toggleTimerMode}
           aria-label={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
@@ -455,6 +456,16 @@ const SpiralTimer = () => {
           disabled={timerState.is !== 'paused'}
         >
           <RotateCw className="transform -rotate-45" size={24} />
+        </ToolbarButton>
+      </Toolbar>
+
+      <Toolbar ariaLabel="Visual controls" isVisible={controlsAreVisible} position="bottom-right">
+        <ToolbarButton
+          aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title="Fullscreen"
+          onClick={toggleFullscreen}
+        >
+          <Scan size={24} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -484,7 +495,9 @@ const SpiralTimer = () => {
             )}
           />
         </ToolbarButton>
+      </Toolbar>
 
+      <Toolbar ariaLabel="Help etc." isVisible={controlsAreVisible} position="bottom-left">
         <ToolbarButton
           onClick={() => setIsHelpVisible(true)}
           aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
