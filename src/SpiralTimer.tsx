@@ -375,7 +375,7 @@ const SpiralTimer = () => {
       onClick={handleBackgroundClicks}
     >
       {/* Clock face */}
-      <div className={clsx('w-full h-full', 'breathe-animation', 'transition-opacity')}>
+      <div className={clsx('w-[100vw] h-[100vh] relative', 'breathe-animation', 'transition-opacity')}>
         {scheme.effective && (
           <ClockFace
             ref={setClockFace}
