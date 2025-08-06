@@ -422,7 +422,6 @@ const SpiralTimer = () => {
           title="Timer control"
           className={clsx(
             'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-            'active:scale-98',
             'w-(--clock-diameter) h-(--clock-diameter) rounded-full',
             'leading-none font-[Inconsolata,monospace] ',
             'text-gray-600 dark:text-gray-300 dark:text-shadow-lg/30',
@@ -463,20 +462,16 @@ const SpiralTimer = () => {
                 hint === 'status' ? 'opacity-100' : 'opacity-0',
               )}
             >
-              {timerState.is === 'paused' ? (
-                timerState.remainingTime === 0 ? (
-                  <>
-                    <RotateCw className="inline transform -rotate-90" size="1em" />
-                    <span className="sr-only">Stopped - click to restart</span>
-                  </>
-                ) : (
-                  <>
-                    <Pause className="inline" size="1em" />
-                    <span className="sr-only">Paused - click to start</span>
-                  </>
-                )
+              {timerState.is === 'paused' && timerState.remainingTime === 0 ? (
+                <>
+                  <RotateCw className="inline transform -rotate-90" size="1em" />
+                  <span className="sr-only">Stopped - click to restart</span>
+                </>
               ) : (
-                <></>
+                <>
+                  <Pause className="inline" size="1em" />
+                  <span className="sr-only">Paused - click to start</span>
+                </>
               )}
             </span>
           </span>
