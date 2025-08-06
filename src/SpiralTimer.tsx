@@ -1,6 +1,17 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { ClockFading, HelpCircle, Moon, Pause, RotateCw, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
+import {
+  CircleCheck,
+  ClockFading,
+  HelpCircle,
+  Moon,
+  Pause,
+  RotateCw,
+  Scan,
+  Sun,
+  SunMoon,
+  TimerReset,
+} from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -18,7 +29,6 @@ import {
   Milliseconds,
   Minute,
   Minutes,
-  Second,
   Seconds,
 } from './time-utils';
 import { TimerRestorePointSchema } from './TimerRestorePoint';
@@ -50,8 +60,6 @@ interface TimerInteraction {
   remainingTime: number;
   hasChanged: boolean;
 }
-
-const OVERLAY_TIMEOUT = 5 * Second;
 
 const FPS: Record<TimerState['is'], number> = {
   interacting: 30,
@@ -85,7 +93,8 @@ const SpiralTimer = () => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
   const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
-  const [mustShowControls, setMustShowControls] = useTemporaryState(false, OVERLAY_TIMEOUT);
+  const [wasRecentlySaved, setWasRecentlySaved] = useTemporaryState(false, 2 * Seconds);
+  const [mustShowControls, setMustShowControls] = useTemporaryState(false, 5 * Seconds);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [clockRadius, setClockRadius] = useState<number | null>(null);
 
@@ -93,6 +102,10 @@ const SpiralTimer = () => {
 
   const timerInteractionRef = useRef<TimerInteraction | null>(null);
   const isOrWas = 'was' in timerState ? timerState.was : timerState.is;
+
+  useEffect(() => {
+    setWasRecentlySaved(true);
+  }, [restorePoint, setWasRecentlySaved]);
 
   useEffect(() => {
     setMustShowControls(true);
@@ -212,6 +225,7 @@ const SpiralTimer = () => {
   };
 
   const restoreFromLastSetDuration = () => {
+    if (timerState.is !== 'paused') return;
     setTimerState(runningOrPaused('paused', timerState.mode, restorePoint[timerState.mode].duration));
   };
 
@@ -285,6 +299,7 @@ const SpiralTimer = () => {
   };
 
   const toggleTimerMode = () => {
+    if (timerState.is !== 'paused') return;
     const nextMode = timerState.mode === 'hours' ? 'minutes' : 'hours';
     const fallbackDuration = restorePoint[nextMode].duration;
     setTimerState(changeMode(timerState, nextMode, fallbackDuration));
@@ -451,7 +466,7 @@ const SpiralTimer = () => {
           onClick={toggleTimerMode}
           aria-label={`Switch to ${timerState.mode === 'hours' ? 'minutes' : 'hours'} mode`}
           title={`Switch to ${timerState.mode === 'hours' ? 'minutes' : 'hours'} mode`}
-          disabled={timerState.is !== 'paused'}
+          disabled={isOrWas !== 'paused'}
         >
           {timerState.mode === 'hours' ? <ClockFading size={24} /> : <TimerReset size={24} />}
         </ToolbarButton>
@@ -460,9 +475,20 @@ const SpiralTimer = () => {
           onClick={restoreFromLastSetDuration}
           aria-label="Restore from last set duration"
           title="Reset"
-          disabled={timerState.is !== 'paused'}
+          disabled={isOrWas !== 'paused'}
+          className="relative"
         >
           <RotateCw className="transform -rotate-45" size={24} />
+          <CircleCheck
+            className={clsx(
+              'absolute -top-1 -right-1',
+              'text-blue-600 dark:text-blue-300 fill-white dark:fill-black',
+              'transition-all duration-200',
+              wasRecentlySaved ? 'opacity-100' : 'opacity-0',
+            )}
+            size={16}
+            strokeWidth={(2 * 24) / 16}
+          />
         </ToolbarButton>
       </Toolbar>
 
