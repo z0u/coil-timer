@@ -90,9 +90,11 @@ const SpiralTimer = () => {
   const [srTimeEl, setSrTimeEl] = useState<HTMLElement | null>(null);
   const [timeEl, setTimeEl] = useState<HTMLElement | null>(null);
   const [endTimeEl, setEndTimeEl] = useState<HTMLElement | null>(null);
+  const [precision, setPrecision] = useState<string>('');
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
   const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
+  const [wasModeRecentlyChanged, setWasModeRecentlyChanged] = useTemporaryState(false, 2 * Seconds);
   const [wasRecentlySaved, setWasRecentlySaved] = useTemporaryState(false, 2 * Seconds);
   const [isAtRestorePoint, setIsAtRestorePoint] = useState(false);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, 5 * Seconds);
@@ -119,6 +121,10 @@ const SpiralTimer = () => {
       timerState.is === 'paused' && timerState.remainingTime === restorePoint[timerState.mode].duration,
     );
   }, [timerState, setIsAtRestorePoint, restorePoint]);
+
+  useEffect(() => {
+    setWasModeRecentlyChanged(true);
+  }, [timerState.mode, setWasModeRecentlyChanged]);
 
   useEffect(() => {
     setMustShowControls(true);
@@ -167,19 +173,27 @@ const SpiralTimer = () => {
 
     clockFace?.draw(remainingTime);
 
+    const roundedDuration = math.roundTo(remainingTime, timerState.mode === 'hours' ? Minutes : Seconds);
+
+    if (timerState.mode === 'hours') {
+      setPrecision(roundedDuration >= 1 * Hour ? 'h:min' : 'min');
+    } else {
+      setPrecision(roundedDuration >= 1 * Minute ? "min'sec" : 'sec');
+    }
+
     if (srTimeEl && endTime != null) {
       if (timerState.mode === 'hours') {
-        srTimeEl.textContent = `${formatDurationSr(math.roundTo(remainingTime, Minutes))} (${formatTimeSr(endTime)})`;
+        srTimeEl.textContent = `${formatDurationSr(roundedDuration)} (${formatTimeSr(endTime)})`;
       } else {
-        srTimeEl.textContent = `${formatDurationMinutesSr(math.roundTo(remainingTime, Seconds))} (${formatTimeSr(endTime)})`;
+        srTimeEl.textContent = `${formatDurationMinutesSr(roundedDuration)} (${formatTimeSr(endTime)})`;
       }
     }
 
     if (timeEl) {
       if (timerState.mode === 'hours') {
-        timeEl.textContent = zerosAsOs(formatDuration(math.roundTo(remainingTime, Minutes)));
+        timeEl.textContent = zerosAsOs(formatDuration(roundedDuration));
       } else {
-        timeEl.textContent = zerosAsOs(formatDurationMinutes(math.roundTo(remainingTime, Seconds)));
+        timeEl.textContent = zerosAsOs(formatDurationMinutes(roundedDuration));
       }
     }
 
@@ -351,6 +365,7 @@ const SpiralTimer = () => {
   useNonPassiveWheelHandler(container, handleWheel);
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
+  const hint = timerState.is === 'interacting' ? 'end-time' : wasModeRecentlyChanged ? 'precision' : 'status';
 
   return (
     <div
@@ -433,8 +448,8 @@ const SpiralTimer = () => {
               ref={setEndTimeEl}
               className={clsx(
                 'text-gray-500 dark:text-gray-400',
-                'transition-opacity duration-500 delay-2000',
-                timerState.is === 'interacting' ? 'opacity-100' : 'opacity-0',
+                'transition-opacity duration-500 delay-1000',
+                hint === 'end-time' ? 'opacity-100' : 'opacity-0',
               )}
             >
               --
@@ -444,12 +459,12 @@ const SpiralTimer = () => {
             <span
               className={clsx(
                 'text-gray-500 dark:text-gray-400',
-                'transition-opacity duration-500',
-                timerState.is === 'paused' ? 'opacity-100 delay-2000' : 'opacity-0',
+                'transition-opacity duration-500 delay-1000',
+                hint === 'status' ? 'opacity-100' : 'opacity-0',
               )}
             >
-              {timerState.is === 'paused' &&
-                (timerState.remainingTime === 0 ? (
+              {timerState.is === 'paused' ? (
+                timerState.remainingTime === 0 ? (
                   <>
                     <RotateCw className="inline transform -rotate-90" size="1em" />
                     <span className="sr-only">Stopped - click to restart</span>
@@ -459,7 +474,21 @@ const SpiralTimer = () => {
                     <Pause className="inline" size="1em" />
                     <span className="sr-only">Paused - click to start</span>
                   </>
-                ))}
+                )
+              ) : (
+                <></>
+              )}
+            </span>
+          </span>
+          <span className="block h-0 text-[calc(min(5vh,5vw))]">
+            <span
+              className={clsx(
+                'text-gray-500 dark:text-gray-400',
+                'transition-opacity duration-500 delay-1000',
+                hint === 'precision' ? 'opacity-100' : 'opacity-0',
+              )}
+            >
+              {precision}
             </span>
           </span>
         </JogDial>

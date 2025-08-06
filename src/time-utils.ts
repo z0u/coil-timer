@@ -52,7 +52,7 @@ export const formatDurationMinutes = (ms: number) => {
   const seconds = totalSeconds % 60;
 
   if (minutes > 0) {
-    return `${minutes}:${seconds}`;
+    return `${minutes}'${seconds}`;
   }
   return `${seconds}`;
 };
