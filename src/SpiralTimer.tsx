@@ -1,6 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { ClockFading, HelpCircle, Moon, Pause, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
+import { ClockFading, HelpCircle, Moon, Pause, RotateCw, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -395,7 +395,18 @@ const SpiralTimer = () => {
                 timerState.is === 'paused' ? 'opacity-100 delay-2000' : 'opacity-0',
               )}
             >
-              <Pause className="inline" size="1em" />
+              {timerState.is === 'paused' &&
+                (timerState.remainingTime === 0 ? (
+                  <>
+                    <RotateCw className="inline transform -rotate-90" size="1em" />
+                    <span className="sr-only">Stopped - click to restart</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause className="inline" size="1em" />
+                    <span className="sr-only">Paused - click to start</span>
+                  </>
+                ))}
             </span>
           </span>
         </JogDial>
