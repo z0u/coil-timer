@@ -1,6 +1,17 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import { CircleCheck, ClockFading, HelpCircle, Moon, RotateCw, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
+import {
+  CircleCheck,
+  ClockFading,
+  HelpCircle,
+  Moon,
+  RotateCw,
+  Scan,
+  Share2,
+  Sun,
+  SunMoon,
+  TimerReset,
+} from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -353,6 +364,16 @@ const SpiralTimer = () => {
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
+  const handleShare = navigator.share
+    ? () => {
+        navigator.share({
+          title: document.title,
+          text: 'Distraction-free visual timer',
+          url: window.location.href,
+        });
+      }
+    : null;
+
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
   const hint = timerState.is === 'interacting' ? 'end-time' : wasModeRecentlyChanged ? 'precision' : null;
 
@@ -562,6 +583,12 @@ const SpiralTimer = () => {
         >
           <HelpCircle size={24} />
         </ToolbarButton>
+
+        {handleShare && (
+          <ToolbarButton onClick={handleShare} aria-label="Share this app" title="Share">
+            <Share2 size={24} />
+          </ToolbarButton>
+        )}
       </Toolbar>
     </div>
   );

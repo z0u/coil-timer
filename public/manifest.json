@@ -1,6 +1,6 @@
 {
-  "name": "Coil Timer",
-  "short_name": "Coil Timer",
+  "name": "Coil",
+  "short_name": "Coil",
   "description": "Distraction-free visual timer",
   "start_url": "./",
   "display": "standalone",
