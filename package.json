@@ -6,8 +6,10 @@
   "main": "src/main.tsx",
   "scripts": {
     "dev": "vite",
-    "svg2png": "convert public/icon-192.svg -resize 180x180 public/apple-touch-icon.png",
-    "build": "npm run svg2png && vite build",
+    "png:social-preview": "convert public/social-preview.svg -resize 1200x630 public/social-preview.png",
+    "png:touch-icon": "convert public/icon-192.svg -resize 180x180 public/apple-touch-icon.png",
+    "png": "npm run png:touch-icon && npm run png:social-preview",
+    "build": "npm run png && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",

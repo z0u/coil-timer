@@ -8,3 +8,4 @@ dist/
 .env.test.local
 .env.production.local
 public/apple-touch-icon.png
+public/social-preview.png
