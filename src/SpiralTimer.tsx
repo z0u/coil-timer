@@ -25,6 +25,7 @@ import { TimerModeSchema } from './TimerMode';
 import { TimerRestorePointSchema } from './TimerRestorePoint';
 import {
   changeTime,
+  clampDuration,
   runningOrPaused,
   TimerState,
   TimerStateSchema,
@@ -73,8 +74,8 @@ const SpiralTimer = () => {
     remainingTime: 10 * Minutes,
   });
   const [restorePoint, setRestorePoint] = useLocalStorage('coil-timer-restore-point', TimerRestorePointSchema, {
-    minutes: { remainingTime: 5 * Seconds },
-    hours: { remainingTime: 10 * Minutes },
+    minutes: { duration: 5 * Seconds },
+    hours: { duration: 10 * Minutes },
   });
   const scheme = useColorScheme();
 
@@ -190,12 +191,11 @@ const SpiralTimer = () => {
 
     if (event.wasDragged) {
       // If dragged, round to the nearest minute/second and resume previous state
-      const newRemainingTime =
-        timerMode === 'hours' ? math.roundTo(remainingTime, Minutes) : math.roundTo(remainingTime, Seconds);
+      const newRemainingTime = clampDuration(timerMode, remainingTime);
       if (timerState.was === 'paused') {
         setRestorePoint({
           ...restorePoint,
-          [timerMode]: { remainingTime: newRemainingTime },
+          [timerMode]: { duration: newRemainingTime },
         });
       }
       setTimerState(runningOrPaused(timerState.was, newRemainingTime));
@@ -203,13 +203,16 @@ const SpiralTimer = () => {
       // If tapped, toggle between running and paused
       if (timerState.was === 'paused' && remainingTime === 0) {
         // Click happened after timer had finished
-        // TODO: Can also happen if user sets time to zero while paused. Is that a problem?
-        setTimerState(runningOrPaused('paused', restorePoint[timerMode].remainingTime));
+        setTimerState(runningOrPaused('paused', restorePoint[timerMode].duration));
       } else {
         const nextState = timerState.was === 'running' ? 'paused' : 'running';
         setTimerState(runningOrPaused(nextState, remainingTime));
       }
     }
+  };
+
+  const restoreFromLastSetDuration = () => {
+    setTimerState(runningOrPaused('paused', restorePoint[timerMode].duration));
   };
 
   const handleJogKey = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -239,23 +242,23 @@ const SpiralTimer = () => {
     let nextState: TimerState | null = null;
     switch (event.key) {
       case 'ArrowUp':
-        nextState = changeTime(timerState, event.shiftKey ? stepSize.large : stepSize.medium);
+        nextState = changeTime(timerMode, timerState, event.shiftKey ? stepSize.large : stepSize.medium);
         break;
       case 'ArrowDown':
-        nextState = changeTime(timerState, event.shiftKey ? -stepSize.large : -stepSize.medium);
+        nextState = changeTime(timerMode, timerState, event.shiftKey ? -stepSize.large : -stepSize.medium);
         break;
       case 'ArrowRight':
-        nextState = changeTime(timerState, event.shiftKey ? stepSize.medium : stepSize.small);
+        nextState = changeTime(timerMode, timerState, event.shiftKey ? stepSize.medium : stepSize.small);
         break;
       case 'ArrowLeft':
-        nextState = changeTime(timerState, event.shiftKey ? -stepSize.medium : -stepSize.small);
+        nextState = changeTime(timerMode, timerState, event.shiftKey ? -stepSize.medium : -stepSize.small);
         break;
     }
     if (nextState) {
       if (nextState.is === 'paused') {
         setRestorePoint({
           ...restorePoint,
-          [timerMode]: { remainingTime: nextState.remainingTime },
+          [timerMode]: { duration: nextState.remainingTime },
         });
       }
       setTimerState(nextState);
@@ -294,7 +297,7 @@ const SpiralTimer = () => {
       const delta = e.deltaY;
       const change =
         timerMode === 'hours' ? (e.shiftKey ? 5 * Minutes : 30 * Seconds) : e.shiftKey ? 30 * Seconds : 5 * Seconds;
-      setTimerState(changeTime(timerState, delta > 0 ? -change : change));
+      setTimerState(changeTime(timerMode, timerState, delta > 0 ? -change : change));
     },
     [setTimerState, timerMode, timerState],
   );
@@ -437,8 +440,18 @@ const SpiralTimer = () => {
           onClick={toggleTimerMode}
           aria-label={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
           title={`Switch to ${timerMode === 'hours' ? 'minutes' : 'hours'} mode`}
+          disabled={timerState.is !== 'paused'}
         >
           {timerMode === 'hours' ? <ClockFading size={24} /> : <TimerReset size={24} />}
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={restoreFromLastSetDuration}
+          aria-label="Restore from last set duration"
+          title="Reset"
+          disabled={timerState.is !== 'paused'}
+        >
+          <RotateCw className="transform -rotate-45" size={24} />
         </ToolbarButton>
 
         <ToolbarButton

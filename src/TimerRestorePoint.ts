@@ -1,10 +1,11 @@
 import z from 'zod';
-import { TimerModeSchema } from './TimerMode';
 
-export const TimerRestorePointSchema = z.record(
-  TimerModeSchema,
-  z.object({
-    remainingTime: z.number(),
-  }),
-);
+const RestorePointSchema = z.object({
+  duration: z.number(),
+});
+
+export const TimerRestorePointSchema = z.object({
+  minutes: RestorePointSchema,
+  hours: RestorePointSchema,
+});
 export type TimerRestorePoint = z.infer<typeof TimerRestorePointSchema>;

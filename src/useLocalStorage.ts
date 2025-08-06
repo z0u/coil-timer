@@ -27,7 +27,7 @@ const save = <S extends ZodType>(key: string, schema: S, value: z.infer<S>) => {
 };
 
 export const useLocalStorage = <S extends ZodType>(key: string, schema: S, initial: z.infer<S>) => {
-  const [state, setState] = useState<z.infer<S>>(() => {
+  const [state, setState] = useState<Readonly<z.infer<S>>>(() => {
     try {
       return load(key, schema) ?? initial;
     } catch (e) {

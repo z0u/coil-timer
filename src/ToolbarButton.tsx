@@ -30,7 +30,8 @@ export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, T
     const baseClasses = clsx(
       'cursor-pointer text-gray-700 dark:text-gray-400',
       'transition-all duration-200 translate-x-[inherit]',
-      isVisible == null ? 'opacity-[inherit]' : isVisible ? (disabled ? 'opacity-50' : 'opacity-100') : 'opacity-0',
+      disabled ? 'filter-[opacity(30%)]' : 'filter-[opacity(100%)]',
+      isVisible == null ? 'opacity-[inherit]' : isVisible ? 'opacity-100' : 'opacity-0',
       disabled ? 'pointer-events-none' : 'pointer-events-auto',
     );
 

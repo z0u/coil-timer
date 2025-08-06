@@ -1,6 +1,7 @@
 import * as math from '@thi.ng/math';
 import z from 'zod';
-import { Hours } from './time-utils';
+import { Hours, Minutes, Seconds } from './time-utils';
+import { TimerMode } from './TimerMode';
 
 const RunningStateSchema = z.object({
   is: z.literal('running'),
@@ -45,9 +46,9 @@ export const toPaused = (state: Readonly<RunningState | InteractingState | Finis
   if (state.is === 'finished') {
     return { is: 'paused', remainingTime: 0 };
   } else if (state.is === 'interacting') {
-    return { is: 'paused', remainingTime: clampHours(state.remainingTime) };
+    return { is: 'paused', remainingTime: state.remainingTime };
   } else {
-    const remainingTime = clampHours(state.endTime - Date.now());
+    const remainingTime = state.endTime - Date.now();
     return { is: 'paused', remainingTime };
   }
 };
@@ -58,10 +59,10 @@ export const togglePaused = (state: Readonly<RunningState | PausedState>): Reado
 
 export const runningOrPaused = (
   is: 'running' | 'paused',
-  timeRemaining: number,
+  remainingTime: number,
 ): Readonly<RunningState | PausedState> => {
-  if (is === 'running') return { is: 'running', endTime: Date.now() + timeRemaining };
-  else return { is: 'paused', remainingTime: clampHours(timeRemaining) };
+  if (is === 'running') return { is: 'running', endTime: Date.now() + remainingTime };
+  else return { is: 'paused', remainingTime };
 };
 
 export const toFinished = (_state: Readonly<RunningState>): Readonly<FinishedState> => {
@@ -77,11 +78,12 @@ export const toInteracting = (state: Readonly<RunningState> | Readonly<PausedSta
 };
 
 export function changeTime(
+  mode: TimerMode,
   state: Readonly<RunningState | PausedState>,
   delta: number,
 ): Readonly<RunningState | PausedState> {
   const remainingTime = state.is === 'paused' ? state.remainingTime : state.endTime - Date.now();
-  const newRemainingTime = clampHours(remainingTime + delta);
+  const newRemainingTime = clampDuration(mode, remainingTime + delta);
 
   if (state.is === 'running' && newRemainingTime > 0) {
     return { is: 'running', endTime: Date.now() + newRemainingTime };
@@ -90,4 +92,8 @@ export function changeTime(
   }
 }
 
-const clampHours = (duration: number) => math.clamp(duration, 0, 24 * Hours);
+export const clampDuration = (mode: TimerMode, duration: number): number => {
+  if (mode === 'hours') return math.clamp(math.roundTo(duration, Minutes), 0, 24 * Hours);
+  else if (mode === 'minutes') return math.clamp(math.roundTo(duration, Seconds), 0, 20 * Minutes);
+  else throw new Error(`Unknown mode ${mode}`);
+};
