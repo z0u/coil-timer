@@ -6,8 +6,8 @@
   "main": "src/main.tsx",
   "scripts": {
     "dev": "vite",
-    "png:social-preview": "convert public/social-preview.svg -resize 1200x630 public/social-preview.png",
-    "png:touch-icon": "convert public/icon-192.svg -resize 180x180 public/apple-touch-icon.png",
+    "png:social-preview": "rsvg-convert public/social-preview.svg -o public/social-preview.png -w1200 -h630",
+    "png:touch-icon": "rsvg-convert public/icon-192.svg -o public/apple-touch-icon.png -a -w180",
     "png": "npm run png:touch-icon && npm run png:social-preview",
     "build": "npm run png && vite build",
     "preview": "vite preview",
