@@ -94,6 +94,7 @@ const SpiralTimer = () => {
   const [jogDial, setJogDial] = useState<HTMLButtonElement | null>(null);
   const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
   const [wasRecentlySaved, setWasRecentlySaved] = useTemporaryState(false, 2 * Seconds);
+  const [isAtRestorePoint, setIsAtRestorePoint] = useState(false);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, 5 * Seconds);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [clockRadius, setClockRadius] = useState<number | null>(null);
@@ -106,6 +107,13 @@ const SpiralTimer = () => {
   useEffect(() => {
     setWasRecentlySaved(true);
   }, [restorePoint, setWasRecentlySaved]);
+
+  useEffect(() => {
+    if (timerState.is === 'interacting') return;
+    setIsAtRestorePoint(
+      timerState.is === 'paused' && timerState.remainingTime === restorePoint[timerState.mode].duration,
+    );
+  }, [timerState, setIsAtRestorePoint, restorePoint]);
 
   useEffect(() => {
     setMustShowControls(true);
@@ -235,6 +243,16 @@ const SpiralTimer = () => {
       return;
     }
 
+    if (event.key === 'Enter' || event.key === ' ') {
+      setTimerState(togglePaused(timerState));
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      restoreFromLastSetDuration();
+      return;
+    }
+
     const stepSize =
       timerState.mode === 'hours'
         ? {
@@ -247,11 +265,6 @@ const SpiralTimer = () => {
             medium: 30 * Seconds,
             large: 5 * Minutes,
           };
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      setTimerState(togglePaused(timerState));
-      return;
-    }
 
     let nextState: TimerState | null = null;
     switch (event.key) {
@@ -472,10 +485,13 @@ const SpiralTimer = () => {
         </ToolbarButton>
 
         <ToolbarButton
-          onClick={restoreFromLastSetDuration}
+          onClick={() => {
+            restoreFromLastSetDuration();
+            jogDial?.focus();
+          }}
           aria-label="Restore from last set duration"
           title="Reset"
-          disabled={isOrWas !== 'paused'}
+          disabled={isOrWas !== 'paused' || isAtRestorePoint}
           className="relative"
         >
           <RotateCw className="transform -rotate-45" size={24} />
