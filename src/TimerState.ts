@@ -1,25 +1,31 @@
 import * as math from '@thi.ng/math';
 import z from 'zod';
 import { Hours, Minutes, Seconds } from './time-utils';
-import { TimerMode } from './TimerMode';
+
+export const TimerModeSchema = z.enum(['hours', 'minutes']);
+export type TimerMode = z.infer<typeof TimerModeSchema>;
 
 const RunningStateSchema = z.object({
   is: z.literal('running'),
+  mode: TimerModeSchema,
   endTime: z.number(),
 });
 
 const PausedStateSchema = z.object({
   is: z.literal('paused'),
+  mode: TimerModeSchema,
   remainingTime: z.number(),
 });
 
 const FinishedStateSchema = z.object({
   is: z.literal('finished'),
+  mode: TimerModeSchema,
 });
 
 const InteractingStateSchema = z.object({
   is: z.literal('interacting'),
   was: z.union([z.literal('running'), z.literal('paused')]),
+  mode: TimerModeSchema,
   remainingTime: z.number(),
 });
 
@@ -39,17 +45,17 @@ type InteractingState = z.infer<typeof InteractingStateSchema>;
 
 export const toRunning = (state: Readonly<PausedState | InteractingState>): RunningState => {
   const endTime = Date.now() + state.remainingTime;
-  return { is: 'running', endTime };
+  return { is: 'running', mode: state.mode, endTime };
 };
 
 export const toPaused = (state: Readonly<RunningState | InteractingState | FinishedState>): Readonly<PausedState> => {
   if (state.is === 'finished') {
-    return { is: 'paused', remainingTime: 0 };
+    return { is: 'paused', mode: state.mode, remainingTime: 0 };
   } else if (state.is === 'interacting') {
-    return { is: 'paused', remainingTime: state.remainingTime };
+    return { is: 'paused', mode: state.mode, remainingTime: state.remainingTime };
   } else {
     const remainingTime = state.endTime - Date.now();
-    return { is: 'paused', remainingTime };
+    return { is: 'paused', mode: state.mode, remainingTime };
   }
 };
 
@@ -59,19 +65,21 @@ export const togglePaused = (state: Readonly<RunningState | PausedState>): Reado
 
 export const runningOrPaused = (
   is: 'running' | 'paused',
+  mode: TimerMode,
   remainingTime: number,
 ): Readonly<RunningState | PausedState> => {
-  if (is === 'running') return { is: 'running', endTime: Date.now() + remainingTime };
-  else return { is: 'paused', remainingTime };
+  if (is === 'running') return { is: 'running', mode, endTime: Date.now() + remainingTime };
+  else return { is: 'paused', mode, remainingTime };
 };
 
-export const toFinished = (_state: Readonly<RunningState>): Readonly<FinishedState> => {
-  return { is: 'finished' };
+export const toFinished = (state: Readonly<RunningState>): Readonly<FinishedState> => {
+  return { is: 'finished', mode: state.mode };
 };
 
 export const toInteracting = (state: Readonly<RunningState> | Readonly<PausedState>): Readonly<InteractingState> => {
   return {
     is: 'interacting',
+    mode: state.mode,
     was: state.is,
     remainingTime: state.is === 'running' ? state.endTime - Date.now() : state.remainingTime,
   };
@@ -86,9 +94,9 @@ export function changeTime(
   const newRemainingTime = clampDuration(mode, remainingTime + delta);
 
   if (state.is === 'running' && newRemainingTime > 0) {
-    return { is: 'running', endTime: Date.now() + newRemainingTime };
+    return { is: 'running', mode: state.mode, endTime: Date.now() + newRemainingTime };
   } else {
-    return { is: 'paused', remainingTime: newRemainingTime };
+    return { is: 'paused', mode: state.mode, remainingTime: newRemainingTime };
   }
 }
 
@@ -96,4 +104,17 @@ export const clampDuration = (mode: TimerMode, duration: number): number => {
   if (mode === 'hours') return math.clamp(math.roundTo(duration, Minutes), 0, 24 * Hours);
   else if (mode === 'minutes') return math.clamp(math.roundTo(duration, Seconds), 0, 20 * Minutes);
   else throw new Error(`Unknown mode ${mode}`);
+};
+
+export const changeMode = (state: Readonly<TimerState>, newMode: TimerMode, duration: number): Readonly<TimerState> => {
+  if (state.mode === newMode) return state;
+
+  // Only allow mode changes when paused
+  if (state.is !== 'paused') return state;
+
+  return {
+    is: 'paused',
+    mode: newMode,
+    remainingTime: duration,
+  };
 };
