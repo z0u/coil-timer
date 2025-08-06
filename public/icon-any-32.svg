@@ -7,11 +7,11 @@
     </filter>
   </defs>
   <g opacity="1" filter="url(#shadow)">
-    <circle cx="96" cy="96" r="60" fill="none" stroke="oklch(0.7 0.24 28.48)" stroke-width="8" opacity="1" />
+    <circle cx="96" cy="96" r="60" fill="none" stroke="#ff483c" stroke-width="8" opacity="1" />
     <path
       d="M 96 36 A 60 60 0 0 1 156 96"
       fill="none"
-      stroke="oklch(0.7 0.24 28.48)"
+      stroke="#ff483c"
       stroke-width="24"
       stroke-linecap="round"
     />
