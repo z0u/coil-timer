@@ -29,10 +29,11 @@ export const ToolbarButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, T
   ({ 'aria-label': ariaLabel, title, className, disabled = false, children, isVisible, onClick, ...props }, ref) => {
     const baseClasses = clsx(
       'cursor-pointer text-gray-700 dark:text-gray-400',
-      'transition-all duration-200 translate-x-[inherit]',
+      'transition-[filter,opacity] duration-200 translate-x-[inherit]',
       disabled ? 'filter-[opacity(30%)]' : 'filter-[opacity(100%)]',
       isVisible == null ? 'opacity-[inherit]' : isVisible ? 'opacity-100' : 'opacity-0',
       disabled ? 'pointer-events-none' : 'pointer-events-auto',
+      'transform active:scale-95',
     );
 
     const handleClick = (e: React.MouseEvent) => {

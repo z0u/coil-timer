@@ -322,6 +322,8 @@ const SpiralTimer = () => {
               'stroke-red-500 dark:stroke-red-600', // Tracks
               'text-gray-600 dark:text-gray-200', // Ticks
               'bg-white dark:bg-black', // Background
+              'transform',
+              timerState.is === 'interacting' && 'scale-[99.7%]',
             )}
             colorScheme={scheme.effective}
             initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
@@ -358,7 +360,8 @@ const SpiralTimer = () => {
           title="Timer control"
           className={clsx(
             'absolute top-[50vh] left-[50vw] transform -translate-x-1/2 -translate-y-1/2',
-            'w-(--clock-diameter) h-(--clock-diameter) breathe-animation rounded-full',
+            'active:scale-98',
+            'w-(--clock-diameter) h-(--clock-diameter) rounded-full',
             'leading-none font-[Inconsolata,monospace] ',
             'text-gray-600 dark:text-gray-300 dark:text-shadow-lg/30',
             'transition-opacity duration-500',
