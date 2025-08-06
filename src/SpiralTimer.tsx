@@ -1,17 +1,6 @@
 import * as math from '@thi.ng/math';
 import clsx from 'clsx';
-import {
-  CircleCheck,
-  ClockFading,
-  HelpCircle,
-  Moon,
-  Pause,
-  RotateCw,
-  Scan,
-  Sun,
-  SunMoon,
-  TimerReset,
-} from 'lucide-react';
+import { CircleCheck, ClockFading, HelpCircle, Moon, RotateCw, Scan, Sun, SunMoon, TimerReset } from 'lucide-react';
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
@@ -365,7 +354,7 @@ const SpiralTimer = () => {
   useNonPassiveWheelHandler(container, handleWheel);
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
-  const hint = timerState.is === 'interacting' ? 'end-time' : wasModeRecentlyChanged ? 'precision' : 'status';
+  const hint = timerState.is === 'interacting' ? 'end-time' : wasModeRecentlyChanged ? 'precision' : null;
 
   return (
     <div
@@ -381,7 +370,8 @@ const SpiralTimer = () => {
             ref={setClockFace}
             className={clsx(
               // These are queried by the clock face to theme the canvas
-              'stroke-red-500 dark:stroke-red-500', // Tracks
+              isOrWas === 'running' && 'stroke-red-500 dark:stroke-red-500', // Tracks
+              isOrWas !== 'running' && 'stroke-red-400 dark:stroke-red-600', // Tracks
               'text-gray-600 dark:text-gray-200', // Ticks
               'bg-white dark:bg-black', // Background
               'transform',
@@ -391,6 +381,7 @@ const SpiralTimer = () => {
             initialTime={timerState.is === 'paused' ? timerState.remainingTime : 0}
             onClockRadiusChange={setClockRadius}
             mode={timerState.mode}
+            isRunning={isOrWas === 'running'}
           />
         )}
         <JogDial
@@ -447,8 +438,8 @@ const SpiralTimer = () => {
               ref={setEndTimeEl}
               className={clsx(
                 'text-gray-500 dark:text-gray-400',
-                'transition-opacity duration-500 delay-1000',
-                hint === 'end-time' ? 'opacity-100' : 'opacity-0',
+                'transition-opacity duration-500',
+                hint === 'end-time' ? 'opacity-100 delay-2000' : 'opacity-0',
               )}
             >
               --
@@ -457,30 +448,10 @@ const SpiralTimer = () => {
           <span className="block h-0 text-[calc(min(5vh,5vw))]">
             <span
               className={clsx(
+                'font-sans font-light',
                 'text-gray-500 dark:text-gray-400',
-                'transition-opacity duration-500 delay-1000',
-                hint === 'status' ? 'opacity-100' : 'opacity-0',
-              )}
-            >
-              {timerState.is === 'paused' && timerState.remainingTime === 0 ? (
-                <>
-                  <RotateCw className="inline transform -rotate-90" size="1em" />
-                  <span className="sr-only">Stopped - click to restart</span>
-                </>
-              ) : (
-                <>
-                  <Pause className="inline" size="1em" />
-                  <span className="sr-only">Paused - click to start</span>
-                </>
-              )}
-            </span>
-          </span>
-          <span className="block h-0 text-[calc(min(5vh,5vw))]">
-            <span
-              className={clsx(
-                'text-gray-500 dark:text-gray-400',
-                'transition-opacity duration-500 delay-1000',
-                hint === 'precision' ? 'opacity-100' : 'opacity-0',
+                'transition-opacity duration-500',
+                hint === 'precision' ? 'opacity-100' : 'opacity-0 delay-2000',
               )}
             >
               {precision}

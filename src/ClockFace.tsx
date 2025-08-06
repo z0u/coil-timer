@@ -3,7 +3,7 @@ import * as v from '@thi.ng/vectors';
 import clsx from 'clsx';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Hours, Minutes, Second } from './time-utils';
-import { TimerMode } from './TimerMode';
+import { TimerMode } from './TimerState';
 
 // These constants are in normalized device coordinates (fractions of min(vh, vw))
 const CLOCK_DIAMETER = 0.8;
@@ -36,6 +36,7 @@ type ClockFaceProps = {
   onClockRadiusChange?: (radius: number) => void;
   initialTime: number;
   mode: TimerMode;
+  isRunning: boolean;
 };
 
 type Dimensions = {
@@ -50,7 +51,7 @@ function ease(t: number, clamp = true): number {
 }
 
 export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
-  ({ className, colorScheme, onClockRadiusChange, initialTime, mode }, ref) => {
+  ({ className, colorScheme, onClockRadiusChange, initialTime, mode, isRunning }, ref) => {
     const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
     const victoryAnimation = useRef<number>(0);
@@ -95,17 +96,18 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
             isFinishing = drawVictoryAnimation(ctx, finalTrack, victoryAnimation.current, theme);
           }
 
-          let primaryTickStyle: 'triangle' | 'exclamation';
+          let primaryTickStyle: 'square' | 'triangle' | 'exclamation';
           const isAnyTimeRemaining = finalTrack.rev > 0 || finalTrack.angle > 0;
-          if (isAnyTimeRemaining || isFinishing) primaryTickStyle = 'triangle';
-          else primaryTickStyle = 'exclamation';
+          if (!isAnyTimeRemaining || isFinishing) primaryTickStyle = 'exclamation';
+          else if (isRunning) primaryTickStyle = 'triangle';
+          else primaryTickStyle = 'square';
 
           drawClockTicks({ ctx, finalTrack, theme, mode, primaryTickStyle });
         } finally {
           ctx.restore();
         }
       },
-      [canvas, dimensions, theme, mode],
+      [canvas, dimensions, theme, mode, isRunning],
     );
 
     useImperativeHandle(
@@ -258,7 +260,7 @@ const drawClockTicks = ({
   finalTrack: Track;
   theme: ClockTheme;
   mode: TimerMode;
-  primaryTickStyle: 'triangle' | 'exclamation';
+  primaryTickStyle: 'square' | 'triangle' | 'exclamation';
 }) => {
   ctx.save();
   try {
@@ -305,7 +307,19 @@ const drawClockTicks = ({
       ctx.rotate(angle - math.PI); // Start from top
       ctx.globalAlpha = isPrimary ? 1 : proximity * 0.9;
       if (isPrimary) {
-        if (primaryTickStyle === 'exclamation') {
+        if (primaryTickStyle === 'square') {
+          // Draw a triangle pointing in
+          ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
+          ctx.beginPath();
+          const width = PRIMARY_TICK_LENGTH;
+          ctx.moveTo(-width / 2, TICK_OUTER_DIA - width);
+          ctx.lineTo(-width / 2, TICK_OUTER_DIA);
+          ctx.lineTo(width / 2, TICK_OUTER_DIA);
+          ctx.lineTo(width / 2, TICK_OUTER_DIA - width);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.fill();
+        } else if (primaryTickStyle === 'exclamation') {
           // Draw an exclamation mark !
           ctx.lineWidth = MAJOR_TICK_WIDTH / 2;
           ctx.beginPath();

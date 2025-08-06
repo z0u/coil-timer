@@ -51,10 +51,13 @@ export const formatDurationMinutes = (ms: number) => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 
-  if (minutes > 0) {
+  if (minutes >= 2) {
+    return `${minutes}'${seconds.toString().padStart(2, ' ')}`;
+  } else if (minutes >= 1) {
     return `${minutes}'${seconds}`;
+  } else {
+    return `${seconds}`;
   }
-  return `${seconds}`;
 };
 
 export const formatDurationMinutesSr = (ms: number) => {
