@@ -89,7 +89,11 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           // Use relative coordinates
           ctx.translate(center[0], center[1]);
           ctx.scale(dimensions.radius, dimensions.radius);
-          drawRevolutions(ctx, tracks, theme, isRunning);
+          if (tracks.length > 1 || finalTrack.angle > 0) {
+            drawRevolutions(ctx, tracks, theme, isRunning);
+          } else {
+            drawFullTrackCircle(ctx, finalTrack, theme, false);
+          }
 
           let isFinishing = false;
           if (victoryAnimation.current) {
@@ -223,27 +227,29 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: 
     for (const track of tracks) {
       if (track.angle < 0.001) continue;
 
-      if (track === finalTrack && !isRunning) {
+      const variant = isRunning ? 'go' : 'stop';
+
+      if (track === finalTrack) {
         // Mask out part of the previous track to avoid collision with the marker (see below)
-        drawTrackMarker(ctx, theme, finalTrack, 'backdrop-1');
+        drawTrackMarker(ctx, { theme, track: finalTrack, variant, phase: 'backdrop-1' });
       }
 
       if (track === finalTrack) {
         // Draw a faint complete circle for the final track
-        drawFullTrackCircle(ctx, finalTrack, theme, !isRunning);
+        drawFullTrackCircle(ctx, finalTrack, theme, false);
       }
 
-      if (track === finalTrack && !isRunning) {
-        // Shadow effects
-        drawTrackMarker(ctx, theme, finalTrack, 'backdrop-2');
-      }
+      // if (track === finalTrack) {
+      //   // Shadow effects
+      //   drawTrackMarker(ctx, { theme, track: finalTrack, variant, phase: 'backdrop-2' });
+      // }
 
       // Draw the remaining duration of this hour (track) as a thick arc
       drawTrackArc(ctx, track, theme, isRunning);
 
-      if (track === finalTrack && !isRunning) {
+      if (track === finalTrack) {
         // Indicate timer state
-        drawTrackMarker(ctx, theme, finalTrack, 'foreground');
+        drawTrackMarker(ctx, { theme, track: finalTrack, variant, phase: 'foreground' });
       }
     }
   } finally {
@@ -290,9 +296,17 @@ const drawTrackArc = (ctx: CanvasRenderingContext2D, track: Track, theme: ClockT
 
 const drawTrackMarker = (
   ctx: CanvasRenderingContext2D,
-  theme: ClockTheme,
-  track: Track,
-  phase: 'foreground' | 'backdrop-1' | 'backdrop-2',
+  {
+    theme,
+    track,
+    variant: shape,
+    phase,
+  }: {
+    theme: ClockTheme;
+    track: Track;
+    variant: 'stop' | 'go';
+    phase: 'foreground' | 'backdrop-1' | 'backdrop-2';
+  },
 ) => {
   ctx.save();
   try {
@@ -305,83 +319,66 @@ const drawTrackMarker = (
 
     const markerScale = 0.9;
 
-    // {
-    // Square to indicate "stopped"
+    if (shape === 'stop') {
+      // Square
 
-    const w = lineWidth * markerScale;
-    ctx.beginPath();
-    ctx.rect(-w / 2, -w / 2, w, w);
+      const w = lineWidth * markerScale;
+      ctx.beginPath();
+      ctx.rect(-w / 2, -w / 2, w, w);
 
-    if (phase === 'backdrop-1') {
-      // Mask
-      ctx.strokeStyle = theme.bg;
-      ctx.lineWidth = w * 2;
-      ctx.stroke();
+      if (phase === 'backdrop-1') {
+        // Mask
+        ctx.strokeStyle = theme.bg;
+        ctx.lineWidth = w * 2;
+        ctx.stroke();
+      }
+
+      if (phase === 'backdrop-2') {
+        // Shadow
+        ctx.strokeStyle = theme.bg;
+        ctx.lineWidth = w * 2;
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
+      }
+
+      if (phase === 'foreground') {
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = theme.bg;
+        ctx.fill();
+
+        ctx.strokeStyle = theme.decoration;
+        ctx.lineWidth = w;
+        ctx.stroke();
+      }
     }
 
-    if (phase === 'backdrop-2') {
-      // Shadow
-      ctx.strokeStyle = theme.bg;
-      ctx.lineWidth = w * 2;
-      ctx.globalAlpha = 0.5;
-      ctx.stroke();
+    if (shape === 'go') {
+      // Circle
+
+      if (phase === 'backdrop-1') {
+        ctx.beginPath();
+        ctx.arc(0, 0, lineWidth * 1.4 * markerScale, 0, math.TAU);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = theme.bg;
+        ctx.fill();
+      }
+
+      if (phase === 'backdrop-2') {
+        ctx.beginPath();
+        ctx.arc(0, 0, lineWidth * 1.3 * markerScale, 0, math.TAU);
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = theme.bg;
+        ctx.fill();
+      }
+
+      if (phase === 'foreground') {
+        ctx.beginPath();
+        ctx.arc(0, 0, lineWidth * 1 * markerScale, 0, math.TAU);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = theme.stroke;
+        ctx.fill();
+      }
     }
-
-    if (phase === 'foreground') {
-      // ctx.strokeStyle = theme.bg;
-      // ctx.lineWidth = w * 2;
-      // ctx.globalAlpha = 0.3;
-      // ctx.stroke();
-
-      ctx.globalAlpha = 1.0;
-      ctx.fillStyle = theme.bg;
-      ctx.fill();
-
-      ctx.strokeStyle = theme.stroke;
-      ctx.lineWidth = w;
-      ctx.stroke();
-    }
-    // }
-
-    // {
-    //   // Circle to indicate "locked"
-
-    //   if (phase === 'backdrop-1') {
-    //     ctx.beginPath();
-    //     ctx.arc(0, 0, lineWidth * 1.4 * markerScale, 0, math.TAU);
-    //     ctx.globalAlpha = 1;
-    //     ctx.fillStyle = theme.bg;
-    //     ctx.fill();
-    //   }
-
-    //   if (phase === 'backdrop-2') {
-    //     ctx.beginPath();
-    //     ctx.arc(0, 0, lineWidth * 1.3 * markerScale, 0, math.TAU);
-    //     ctx.globalAlpha = 0.5;
-    //     ctx.fillStyle = theme.bg;
-    //     ctx.fill();
-    //   }
-
-    //   if (phase === 'foreground') {
-    //     ctx.beginPath();
-    //     ctx.arc(0, 0, lineWidth * 1.2 * markerScale, 0, math.TAU);
-    //     ctx.globalAlpha = 0.3;
-    //     ctx.fillStyle = theme.bg;
-    //     ctx.fill();
-
-    //     ctx.beginPath();
-    //     ctx.arc(0, 0, lineWidth * 1 * markerScale, 0, math.TAU);
-    //     ctx.globalAlpha = 1;
-    //     ctx.fillStyle = theme.text;
-    //     ctx.fill();
-
-    //     // ctx.beginPath();
-    //     // ctx.arc(0, 0, lineWidth * 0.6 * markerScale, 0, math.TAU);
-    //     // ctx.fillStyle = theme.bg;
-    //     // ctx.globalAlpha = 1;
-    //     // ctx.fill();
-    //   }
-    // }
   } finally {
     ctx.restore();
   }
