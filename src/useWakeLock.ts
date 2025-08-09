@@ -1,47 +1,35 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useVisibility } from './useVisibility';
 
 type WakeLockParams = {
   enable: boolean;
 };
 
+/**
+ * Hook to acquire a screen wake lock.
+ *
+ * @param enable - Whether to enable (or release) the wake lock.
+ */
 export const useWakeLock = ({ enable }: WakeLockParams) => {
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const isVisible = useVisibility();
+  const _enable = enable && isVisible;
 
-  // Request wake lock
-  const requestWakeLock = useCallback(async () => {
-    if (!('wakeLock' in navigator)) return;
-    try {
-      wakeLockRef.current = await navigator.wakeLock.request('screen');
-      console.debug('Screen wake lock acquired');
-    } catch (e) {
-      console.warn(`Failed to acquire wake lock: ${e}`);
-    }
-  }, []);
-
-  // Release wake lock
-  const releaseWakeLock = useCallback(() => {
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release();
-      console.debug('Screen wake lock released');
-      wakeLockRef.current = null;
-    }
-  }, []);
-
-  // Initialize wake lock and handle visibility changes
   useEffect(() => {
-    if (!enable) return;
+    if (!_enable) return;
 
-    requestWakeLock();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
-        requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const promise = navigator.wakeLock.request('screen').then((sentinel) => {
+      console.debug('Screen wake lock acquired');
+      return sentinel;
+    });
+    promise.catch((e) => console.warn(`Failed to acquire wake lock: ${e}`));
 
     return () => {
-      releaseWakeLock();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Only release the lock that was acquired above, not any others that were
+      // acquired in the meantime.
+      promise
+        .then((sentinel) => sentinel.release())
+        .then(() => console.debug('Screen wake lock released'))
+        .catch((e) => console.warn(`Failed to release wake lock: ${e}`));
     };
-  }, [requestWakeLock, releaseWakeLock, enable]);
+  }, [_enable]);
 };
