@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import {
   CircleCheck,
   ClockFading,
+  Eraser,
   HelpCircle,
   Moon,
   RotateCw,
@@ -31,19 +32,19 @@ import {
   Minutes,
   Seconds,
 } from './time-utils';
-import { TimerRestorePointSchema } from './TimerRestorePoint';
+import { TimerRestorePoint } from './TimerRestorePoint';
 import {
   changeMode,
   changeTime,
   clampDuration,
   runningOrPaused,
   TimerState,
-  TimerStateSchema,
   toFinished,
   togglePaused,
   toInteracting,
   toPaused,
 } from './TimerState';
+import { TimerModel, TimerModelSchema } from './TimerModel';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
@@ -73,18 +74,25 @@ const MINUTES_MODE_FPS = {
   running: 6, // mimic high-resolution stopwatches
 };
 
+const DEFAULTS = Object.freeze({
+  minutes: Object.freeze({ duration: 5 * Seconds }),
+  hours: Object.freeze({ duration: 10 * Minutes }),
+});
+
 const SpiralTimer = () => {
   // Device capabilities
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
-  const [timerState, setTimerState] = useLocalStorage('coil-timer-state', TimerStateSchema, {
-    is: 'paused',
-    mode: 'hours',
-    remainingTime: 10 * Minutes,
-  });
-  const [restorePoint, setRestorePoint] = useLocalStorage('coil-timer-restore-point', TimerRestorePointSchema, {
-    minutes: { duration: 5 * Seconds },
-    hours: { duration: 10 * Minutes },
-  });
+  const initialModel: TimerModel = {
+    state: {
+      is: 'paused',
+      mode: 'hours',
+      remainingTime: DEFAULTS.hours.duration,
+    },
+    restorePoint: DEFAULTS,
+  };
+  const [timerModel, setTimerModel] = useLocalStorage('coil-timer-model', TimerModelSchema, initialModel);
+  const timerState = timerModel.state;
+  const restorePoint = timerModel.restorePoint;
   const scheme = useColorScheme();
 
   const [srTimeEl, setSrTimeEl] = useState<HTMLElement | null>(null);
@@ -149,7 +157,7 @@ const SpiralTimer = () => {
       endTime = timerState.endTime;
       remainingTime = timerState.endTime - Date.now();
       if (remainingTime <= 0) {
-        setTimerState(toFinished(timerState));
+        setTimerModel({ ...timerModel, state: toFinished(timerState) });
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'finished') {
@@ -161,7 +169,7 @@ const SpiralTimer = () => {
       endTime = null;
 
       if (animationComplete) {
-        setTimerState(toPaused(timerState));
+        setTimerModel({ ...timerModel, state: toPaused(timerState) });
         return; // State change will re-run the effect.
       }
     } else if (timerState.is === 'paused') {
@@ -200,7 +208,7 @@ const SpiralTimer = () => {
     if (endTimeEl && endTime != null) {
       endTimeEl.textContent = zerosAsOs(formatTime(endTime));
     }
-  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, setTimerState]);
+  }, [timerState, clockFace, srTimeEl, timeEl, endTimeEl, timerModel, setTimerModel]);
 
   const fpsMap = timerState.mode === 'hours' ? FPS : MINUTES_MODE_FPS;
   useAnimation({ runFrame, fps: fpsMap[timerState.is] });
@@ -211,7 +219,7 @@ const SpiralTimer = () => {
     const remainingTime = timerState.is === 'running' ? timerState.endTime - Date.now() : timerState.remainingTime;
 
     timerInteractionRef.current = { remainingTime, hasChanged: false };
-    setTimerState(toInteracting(timerState));
+    setTimerModel({ ...timerModel, state: toInteracting(timerState) });
   };
 
   const handleJogMove = (event: JogEvent) => {
@@ -232,28 +240,41 @@ const SpiralTimer = () => {
     if (event.wasDragged) {
       // If dragged, round to the nearest minute/second and resume previous state
       const newRemainingTime = clampDuration(timerState.mode, remainingTime);
-      if (timerState.was === 'paused' && remainingTime > 0) {
-        setRestorePoint({
-          ...restorePoint,
-          [timerState.mode]: { duration: newRemainingTime },
-        });
-      }
-      setTimerState(runningOrPaused(timerState.was, timerState.mode, newRemainingTime));
+      const nextRestorePoint: TimerRestorePoint =
+        timerState.was === 'paused' && remainingTime > 0
+          ? { ...restorePoint, [timerState.mode]: { duration: newRemainingTime } }
+          : restorePoint;
+      const nextState = runningOrPaused(timerState.was, timerState.mode, newRemainingTime);
+      setTimerModel({ ...timerModel, state: nextState, restorePoint: nextRestorePoint });
     } else {
       // If tapped, toggle between running and paused
       if (timerState.was === 'paused' && remainingTime === 0) {
         // Click happened after timer had finished
-        setTimerState(runningOrPaused('paused', timerState.mode, restorePoint[timerState.mode].duration));
+        setTimerModel({
+          ...timerModel,
+          state: runningOrPaused('paused', timerState.mode, restorePoint[timerState.mode].duration),
+        });
       } else {
         const nextState = timerState.was === 'running' ? 'paused' : 'running';
-        setTimerState(runningOrPaused(nextState, timerState.mode, remainingTime));
+        setTimerModel({ ...timerModel, state: runningOrPaused(nextState, timerState.mode, remainingTime) });
       }
     }
   };
 
   const restoreFromLastSetDuration = () => {
     if (timerState.is !== 'paused') return;
-    setTimerState(runningOrPaused('paused', timerState.mode, restorePoint[timerState.mode].duration));
+    setTimerModel({
+      ...timerModel,
+      state: runningOrPaused('paused', timerState.mode, restorePoint[timerState.mode].duration),
+    });
+  };
+
+  const resetToDefault = () => {
+    if (timerState.is !== 'paused') return;
+    const mode = timerState.mode;
+    const nextRestorePoint = { ...restorePoint, [mode]: DEFAULTS[mode] } as TimerRestorePoint;
+    const nextState = runningOrPaused('paused', mode, DEFAULTS[mode].duration);
+    setTimerModel({ ...timerModel, restorePoint: nextRestorePoint, state: nextState });
   };
 
   const handleJogKey = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -268,7 +289,7 @@ const SpiralTimer = () => {
         // Activated after timer had finished
         restoreFromLastSetDuration();
       } else {
-        setTimerState(togglePaused(timerState));
+        setTimerModel({ ...timerModel, state: togglePaused(timerState) });
       }
 
       return;
@@ -308,13 +329,11 @@ const SpiralTimer = () => {
         break;
     }
     if (nextState) {
-      if (nextState.is === 'paused') {
-        setRestorePoint({
-          ...restorePoint,
-          [timerState.mode]: { duration: nextState.remainingTime },
-        });
-      }
-      setTimerState(nextState);
+      const nextRestorePoint =
+        nextState.is === 'paused'
+          ? { ...restorePoint, [timerState.mode]: { duration: nextState.remainingTime } }
+          : restorePoint;
+      setTimerModel({ ...timerModel, state: nextState, restorePoint: nextRestorePoint });
     }
   };
 
@@ -341,7 +360,7 @@ const SpiralTimer = () => {
     if (timerState.is !== 'paused') return;
     const nextMode = timerState.mode === 'hours' ? 'minutes' : 'hours';
     const fallbackDuration = restorePoint[nextMode].duration;
-    setTimerState(changeMode(timerState, nextMode, fallbackDuration));
+    setTimerModel({ ...timerModel, state: changeMode(timerState, nextMode, fallbackDuration) });
   };
 
   // Wheel gesture handler for adding/subtracting time
@@ -358,9 +377,9 @@ const SpiralTimer = () => {
           : e.shiftKey
             ? 30 * Seconds
             : 5 * Seconds;
-      setTimerState(changeTime(timerState.mode, timerState, delta > 0 ? -change : change));
+      setTimerModel({ ...timerModel, state: changeTime(timerState.mode, timerState, delta > 0 ? -change : change) });
     },
-    [setTimerState, timerState],
+    [setTimerModel, timerModel, timerState],
   );
   useNonPassiveWheelHandler(container, handleWheel);
 
@@ -519,7 +538,7 @@ const SpiralTimer = () => {
             jogDial?.focus();
           }}
           aria-label="Restore from last set duration"
-          title="Reset"
+          title="Restore last"
           disabled={isOrWas !== 'paused' || isAtRestorePoint}
           highlight={wasRecentlySaved}
           className="relative"
@@ -535,6 +554,18 @@ const SpiralTimer = () => {
             size={16}
             strokeWidth={(2 * 24) / 16}
           />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => {
+            resetToDefault();
+            jogDial?.focus();
+          }}
+          aria-label="Reset to the default duration"
+          title="Reset"
+          disabled={isOrWas !== 'paused'}
+        >
+          <Eraser size={24} />
         </ToolbarButton>
       </Toolbar>
 
