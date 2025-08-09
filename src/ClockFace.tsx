@@ -100,7 +100,8 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           const isAnyTimeRemaining = finalTrack.rev > 0 || finalTrack.angle > 0;
           if (!isAnyTimeRemaining || isFinishing) primaryTickStyle = 'exclamation';
           else if (isRunning) primaryTickStyle = 'triangle';
-          else primaryTickStyle = 'pause';
+          // else primaryTickStyle = 'pause';
+          else primaryTickStyle = 'triangle';
 
           drawClockTicks({ ctx, finalTrack, theme, mode, primaryTickStyle });
         } finally {
@@ -221,9 +222,6 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: 
     // Draw revolutions
     for (const track of tracks) {
       if (track.angle < 0.001) continue;
-      const { thickness, radius, angle, distFromStart, distFromEnd } = track;
-      const dist = Math.abs(distFromStart) < Math.abs(distFromEnd) ? distFromStart : distFromEnd;
-      const lineWidth = TRACK_WIDTH * thickness * (isRunning ? 1 : 0.9);
 
       if (track === finalTrack && !isRunning) {
         // Mask out part of the previous track to avoid collision with the marker (see below)
@@ -232,28 +230,8 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: 
 
       if (track === finalTrack) {
         // Draw a faint complete circle for the final track
-
-        const { thickness, radius, distFromStart } = finalTrack;
-        const frac = math.clamp(unmix(0, 1 / 60, -distFromStart), 0, 1);
-        const alpha = tracks.length > 1 ? math.mix(0, 1, frac) : 1;
-        ctx.lineWidth = (TRACK_WIDTH * thickness) / 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, math.TAU);
-
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = theme.fill;
-        ctx.stroke();
-
-        if (!isRunning) {
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = theme.fill;
-          ctx.fill();
-        }
+        drawFullTrackCircle(ctx, finalTrack, theme, !isRunning);
       }
-
-      ctx.strokeStyle = theme.stroke;
-      ctx.globalAlpha = math.clamp(1 - dist / 6, 0.5, 1.0);
-      ctx.lineWidth = lineWidth * math.clamp(1 - dist / 6, 0.15, 1.0);
 
       if (track === finalTrack && !isRunning) {
         // Shadow effects
@@ -261,9 +239,7 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: 
       }
 
       // Draw the remaining duration of this hour (track) as a thick arc
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, -math.HALF_PI, angle - math.HALF_PI);
-      ctx.stroke();
+      drawTrackArc(ctx, track, theme, isRunning);
 
       if (track === finalTrack && !isRunning) {
         // Indicate timer state
@@ -273,6 +249,43 @@ const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: 
   } finally {
     ctx.restore();
   }
+};
+
+const drawFullTrackCircle = (ctx: CanvasRenderingContext2D, track: Track, theme: ClockTheme, filled: boolean) => {
+  const { thickness, radius } = track;
+  ctx.lineWidth = (TRACK_WIDTH * thickness) / 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, math.TAU);
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = theme.fill;
+  ctx.stroke();
+
+  if (filled) {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = theme.fill;
+    ctx.fill();
+  }
+};
+
+const drawTrackArc = (ctx: CanvasRenderingContext2D, track: Track, theme: ClockTheme, isRunning: boolean) => {
+  const { thickness, radius, angle, distFromStart, distFromEnd } = track;
+  const dist = Math.abs(distFromStart) < Math.abs(distFromEnd) ? distFromStart : distFromEnd;
+  const baseLineWidth = TRACK_WIDTH * thickness * (isRunning ? 1 : 0.9);
+  const lineWidth = baseLineWidth * math.clamp(1 - dist / 6, 0.15, 1.0);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, -math.HALF_PI, angle - math.HALF_PI);
+
+  // ctx.strokeStyle = theme.bg;
+  // ctx.globalAlpha = 0.2;
+  // ctx.lineWidth = lineWidth * 1.6;
+  // ctx.stroke();
+
+  ctx.strokeStyle = theme.stroke;
+  ctx.globalAlpha = math.clamp(1 - dist / 6, 0.5, 1.0);
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
 };
 
 const drawTrackMarker = (
@@ -290,7 +303,7 @@ const drawTrackMarker = (
     ctx.rotate(angle - math.HALF_PI); // Rotate to the end of the arc
     ctx.translate(radius, 0); // Move to the end of the arc
 
-    const markerScale = 0.8;
+    const markerScale = 0.9;
 
     // {
     // Square to indicate "stopped"
@@ -300,29 +313,31 @@ const drawTrackMarker = (
     ctx.rect(-w / 2, -w / 2, w, w);
 
     if (phase === 'backdrop-1') {
+      // Mask
       ctx.strokeStyle = theme.bg;
-      ctx.lineWidth = w * 1.6;
+      ctx.lineWidth = w * 2;
       ctx.stroke();
     }
 
     if (phase === 'backdrop-2') {
+      // Shadow
       ctx.strokeStyle = theme.bg;
-      ctx.lineWidth = w * 1.5;
+      ctx.lineWidth = w * 2;
       ctx.globalAlpha = 0.5;
       ctx.stroke();
     }
 
     if (phase === 'foreground') {
-      ctx.strokeStyle = theme.bg;
-      ctx.lineWidth = w * 1.4;
-      ctx.globalAlpha = 0.3;
-      ctx.stroke();
+      // ctx.strokeStyle = theme.bg;
+      // ctx.lineWidth = w * 2;
+      // ctx.globalAlpha = 0.3;
+      // ctx.stroke();
 
       ctx.globalAlpha = 1.0;
       ctx.fillStyle = theme.bg;
       ctx.fill();
 
-      ctx.strokeStyle = theme.text;
+      ctx.strokeStyle = theme.stroke;
       ctx.lineWidth = w;
       ctx.stroke();
     }
@@ -524,11 +539,10 @@ const drawVictoryAnimation = (
   return headProgress < 1;
 };
 
-const unmix = (a: number, b: number, v: number): number => (v - a) / (b - a);
-
 type ClockTheme = {
   scheme: 'light' | 'dark';
   stroke: string;
+  decoration: string;
   fill: string;
   bg: string;
   text: string;
@@ -545,6 +559,7 @@ const useCanvasTheme = (canvas: HTMLCanvasElement | null, colorScheme: 'light' |
       setTheme({
         scheme: colorScheme,
         stroke: style.stroke,
+        decoration: style.textDecorationColor,
         fill: style.fill,
         bg: style.backgroundColor,
         text: style.color,

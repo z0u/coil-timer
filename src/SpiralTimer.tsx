@@ -392,8 +392,9 @@ const SpiralTimer = () => {
             className={clsx(
               // These are queried by the clock face to theme the canvas
               'stroke-red-400 dark:stroke-red-500', // Tracks
-              'fill-red-100 dark:fill-red-900', // Track markers
+              'decoration-gray-700 dark:decoration-white', // Track markers
               'text-gray-600 dark:text-gray-200', // Clock tick marks
+              'fill-red-100 dark:fill-red-900', // Clock face background (when stopped)
               'bg-white dark:bg-black', // Background
               // 'transform',
               // timerState.is === 'interacting' && 'scale-[99.7%]',
