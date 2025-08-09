@@ -32,6 +32,7 @@ import {
   Minutes,
   Seconds,
 } from './time-utils';
+import { TimerModelSchema } from './TimerModel';
 import { TimerRestorePoint } from './TimerRestorePoint';
 import {
   changeMode,
@@ -44,7 +45,6 @@ import {
   toInteracting,
   toPaused,
 } from './TimerState';
-import { TimerModel, TimerModelSchema } from './TimerModel';
 import { Toolbar } from './Toolbar';
 import { ToolbarButton } from './ToolbarButton';
 import { useAnimation } from './useAnimation';
@@ -74,23 +74,23 @@ const MINUTES_MODE_FPS = {
   running: 6, // mimic high-resolution stopwatches
 };
 
-const DEFAULTS = Object.freeze({
+const DEFAULT_RESTORE_POINT: TimerRestorePoint = Object.freeze({
   minutes: Object.freeze({ duration: 5 * Seconds }),
   hours: Object.freeze({ duration: 10 * Minutes }),
+});
+const DEFAULT_STATE: TimerState = Object.freeze({
+  is: 'paused',
+  mode: 'hours',
+  remainingTime: DEFAULT_RESTORE_POINT.hours.duration,
 });
 
 const SpiralTimer = () => {
   // Device capabilities
   const { isTouchDevice, hasKeyboard } = useDeviceCapabilities();
-  const initialModel: TimerModel = {
-    state: {
-      is: 'paused',
-      mode: 'hours',
-      remainingTime: DEFAULTS.hours.duration,
-    },
-    restorePoint: DEFAULTS,
-  };
-  const [timerModel, setTimerModel] = useLocalStorage('coil-timer-model', TimerModelSchema, initialModel);
+  const [timerModel, setTimerModel] = useLocalStorage('coil-timer-model', TimerModelSchema, {
+    state: DEFAULT_STATE,
+    restorePoint: DEFAULT_RESTORE_POINT,
+  });
   const timerState = timerModel.state;
   const restorePoint = timerModel.restorePoint;
   const scheme = useColorScheme();
@@ -104,7 +104,6 @@ const SpiralTimer = () => {
   const [clockFace, setClockFace] = useState<ClockFaceHandle | null>(null);
   const [wasModeRecentlyChanged, setWasModeRecentlyChanged] = useTemporaryState(false, 2 * Seconds);
   const [wasRecentlySaved, setWasRecentlySaved] = useTemporaryState(false, 2 * Seconds);
-  const [isAtRestorePoint, setIsAtRestorePoint] = useState(false);
   const [mustShowControls, setMustShowControls] = useTemporaryState(false, 5 * Seconds);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [clockRadius, setClockRadius] = useState<number | null>(null);
@@ -122,13 +121,6 @@ const SpiralTimer = () => {
       hasMounted.current = true;
     }
   }, [restorePoint, setWasRecentlySaved]);
-
-  useEffect(() => {
-    if (timerState.is === 'interacting') return;
-    setIsAtRestorePoint(
-      timerState.is === 'paused' && timerState.remainingTime === restorePoint[timerState.mode].duration,
-    );
-  }, [timerState, setIsAtRestorePoint, restorePoint]);
 
   useEffect(() => {
     setWasModeRecentlyChanged(true);
@@ -272,8 +264,8 @@ const SpiralTimer = () => {
   const resetToDefault = () => {
     if (timerState.is !== 'paused') return;
     const mode = timerState.mode;
-    const nextRestorePoint = { ...restorePoint, [mode]: DEFAULTS[mode] } as TimerRestorePoint;
-    const nextState = runningOrPaused('paused', mode, DEFAULTS[mode].duration);
+    const nextRestorePoint = { ...restorePoint, [mode]: DEFAULT_RESTORE_POINT[mode] };
+    const nextState = runningOrPaused('paused', mode, DEFAULT_RESTORE_POINT[mode].duration);
     setTimerModel({ ...timerModel, restorePoint: nextRestorePoint, state: nextState });
   };
 
@@ -395,6 +387,15 @@ const SpiralTimer = () => {
 
   const controlsAreVisible = timerState.is === 'paused' || mustShowControls;
   const hint = timerState.is === 'interacting' ? 'end-time' : wasModeRecentlyChanged ? 'precision' : null;
+
+  const resetBehavior =
+    timerState.is !== 'paused'
+      ? null
+      : timerState.remainingTime !== restorePoint[timerState.mode].duration
+        ? 'restore'
+        : restorePoint[timerState.mode].duration !== DEFAULT_RESTORE_POINT[timerState.mode].duration
+          ? 'reset-to-default'
+          : null;
 
   return (
     <div
@@ -534,16 +535,27 @@ const SpiralTimer = () => {
 
         <ToolbarButton
           onClick={() => {
-            restoreFromLastSetDuration();
+            if (resetBehavior === 'reset-to-default') resetToDefault();
+            else if (resetBehavior === 'restore') restoreFromLastSetDuration();
             jogDial?.focus();
           }}
-          aria-label="Restore from last set duration"
-          title="Restore last"
-          disabled={isOrWas !== 'paused' || isAtRestorePoint}
+          aria-label={
+            resetBehavior === 'reset-to-default' ? 'Reset to default duration' : 'Restore from last set duration'
+          }
+          title={resetBehavior === 'reset-to-default' ? 'Reset' : 'Restore last'}
+          disabled={resetBehavior == null}
           highlight={wasRecentlySaved}
           className="relative"
         >
-          <RotateCw className="transform -rotate-45" size={24} />
+          {resetBehavior === 'reset-to-default' ? (
+            <>
+              <Eraser size={24} />
+            </>
+          ) : (
+            <>
+              <RotateCw className="transform -rotate-45" size={24} />
+            </>
+          )}
           <CircleCheck
             className={clsx(
               'absolute -top-1 -right-1',
@@ -554,18 +566,6 @@ const SpiralTimer = () => {
             size={16}
             strokeWidth={(2 * 24) / 16}
           />
-        </ToolbarButton>
-
-        <ToolbarButton
-          onClick={() => {
-            resetToDefault();
-            jogDial?.focus();
-          }}
-          aria-label="Reset to the default duration"
-          title="Reset"
-          disabled={isOrWas !== 'paused'}
-        >
-          <Eraser size={24} />
         </ToolbarButton>
       </Toolbar>
 
