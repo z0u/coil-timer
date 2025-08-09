@@ -145,6 +145,9 @@ export const HelpScreen = ({ isHelpVisible, bgAction, jogDialAction, onCloseClic
                   Source code on GitHub
                 </a>
               </li>
+              <li className="content">
+                <span>&nbsp;</span>
+              </li>
             </ul>
           </div>
         </section>

@@ -82,9 +82,8 @@ export const Toolbar = ({
           : position === 'bottom-right'
             ? 'bottom-6 right-6 flex-col-reverse portrait:flex-row-reverse'
             : 'top-6 right-6 flex-col portrait:flex-row-reverse',
-        'transition-opacity duration-500',
-        isVisible ? 'opacity-50' : 'opacity-0',
-        'hover:opacity-100',
+        'transition-all duration-500',
+        isVisible ? 'opacity-50 hover:opacity-100 visible' : 'opacity-0 invisible',
         className,
       )}
     >

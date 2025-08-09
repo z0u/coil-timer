@@ -503,7 +503,7 @@ const SpiralTimer = () => {
         }}
       />
 
-      <Toolbar ariaLabel="Timer controls" isVisible={controlsAreVisible}>
+      <Toolbar ariaLabel="Timer controls" isVisible={controlsAreVisible && !isHelpVisible}>
         <ToolbarButton
           onClick={toggleTimerMode}
           aria-label={`Switch to ${timerState.mode === 'hours' ? 'minutes' : 'hours'} mode`}
@@ -538,7 +538,7 @@ const SpiralTimer = () => {
         </ToolbarButton>
       </Toolbar>
 
-      <Toolbar ariaLabel="Visual controls" isVisible={controlsAreVisible} position="bottom-right">
+      <Toolbar ariaLabel="Visual controls" isVisible={controlsAreVisible && !isHelpVisible} position="bottom-right">
         <ToolbarButton
           aria-label={document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'}
           title="Fullscreen"
@@ -576,7 +576,7 @@ const SpiralTimer = () => {
         </ToolbarButton>
       </Toolbar>
 
-      <Toolbar ariaLabel="Help etc." isVisible={controlsAreVisible} position="bottom-left">
+      <Toolbar ariaLabel="Help etc." isVisible={controlsAreVisible && !isHelpVisible} position="bottom-left">
         <ToolbarButton
           onClick={() => setIsHelpVisible(true)}
           aria-label={isHelpVisible ? 'Hide instructions' : 'Show instructions'}
