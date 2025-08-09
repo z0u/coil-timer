@@ -89,7 +89,7 @@ export const ClockFace = forwardRef<ClockFaceHandle, ClockFaceProps>(
           // Use relative coordinates
           ctx.translate(center[0], center[1]);
           ctx.scale(dimensions.radius, dimensions.radius);
-          drawRevolutions(ctx, tracks, theme.stroke);
+          drawRevolutions(ctx, tracks, theme, isRunning);
 
           let isFinishing = false;
           if (victoryAnimation.current) {
@@ -207,43 +207,166 @@ const getTracks = (
   return tracks;
 };
 
-const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], trackColor: string) => {
+const drawRevolutions = (ctx: CanvasRenderingContext2D, tracks: Track[], theme: ClockTheme, isRunning: boolean) => {
   const finalTrack = tracks[tracks.length - 1];
   if (!finalTrack) return;
 
   ctx.save();
   try {
-    ctx.strokeStyle = trackColor;
-    ctx.fillStyle = trackColor;
+    ctx.strokeStyle = theme.stroke;
+    ctx.fillStyle = theme.stroke;
     ctx.lineCap = 'round';
-
-    // Draw faint tracks as complete circles
-    {
-      ctx.globalAlpha = 0.4;
-      const { thickness, radius, distFromStart } = finalTrack;
-      const frac = math.clamp(unmix(0, 1 / 60, -distFromStart), 0, 1);
-      ctx.globalAlpha = tracks.length > 1 ? math.mix(0, 0.3, frac) : 0.3;
-      ctx.lineWidth = (TRACK_WIDTH * thickness) / 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, math.TAU);
-      ctx.stroke();
-    }
+    ctx.lineJoin = 'round';
 
     // Draw revolutions
     for (const track of tracks) {
       if (track.angle < 0.001) continue;
       const { thickness, radius, angle, distFromStart, distFromEnd } = track;
       const dist = Math.abs(distFromStart) < Math.abs(distFromEnd) ? distFromStart : distFromEnd;
-      const lineWidth = TRACK_WIDTH * thickness;
+      const lineWidth = TRACK_WIDTH * thickness * (isRunning ? 1 : 0.9);
 
+      if (track === finalTrack && !isRunning) {
+        // Mask out part of the previous track to avoid collision with the marker (see below)
+        drawTrackMarker(ctx, theme, finalTrack, 'backdrop-1');
+      }
+
+      if (track === finalTrack) {
+        // Draw a faint complete circle for the final track
+
+        const { thickness, radius, distFromStart } = finalTrack;
+        const frac = math.clamp(unmix(0, 1 / 60, -distFromStart), 0, 1);
+        const alpha = tracks.length > 1 ? math.mix(0, 1, frac) : 1;
+        ctx.lineWidth = (TRACK_WIDTH * thickness) / 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, math.TAU);
+
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = theme.fill;
+        ctx.stroke();
+
+        if (!isRunning) {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = theme.fill;
+          ctx.fill();
+        }
+      }
+
+      ctx.strokeStyle = theme.stroke;
       ctx.globalAlpha = math.clamp(1 - dist / 6, 0.5, 1.0);
       ctx.lineWidth = lineWidth * math.clamp(1 - dist / 6, 0.15, 1.0);
+
+      if (track === finalTrack && !isRunning) {
+        // Shadow effects
+        drawTrackMarker(ctx, theme, finalTrack, 'backdrop-2');
+      }
 
       // Draw the remaining duration of this hour (track) as a thick arc
       ctx.beginPath();
       ctx.arc(0, 0, radius, -math.HALF_PI, angle - math.HALF_PI);
       ctx.stroke();
+
+      if (track === finalTrack && !isRunning) {
+        // Indicate timer state
+        drawTrackMarker(ctx, theme, finalTrack, 'foreground');
+      }
     }
+  } finally {
+    ctx.restore();
+  }
+};
+
+const drawTrackMarker = (
+  ctx: CanvasRenderingContext2D,
+  theme: ClockTheme,
+  track: Track,
+  phase: 'foreground' | 'backdrop-1' | 'backdrop-2',
+) => {
+  ctx.save();
+  try {
+    const { angle, thickness, radius } = track;
+
+    const lineWidth = TRACK_WIDTH * thickness;
+
+    ctx.rotate(angle - math.HALF_PI); // Rotate to the end of the arc
+    ctx.translate(radius, 0); // Move to the end of the arc
+
+    const markerScale = 0.8;
+
+    // {
+    // Square to indicate "stopped"
+
+    const w = lineWidth * markerScale;
+    ctx.beginPath();
+    ctx.rect(-w / 2, -w / 2, w, w);
+
+    if (phase === 'backdrop-1') {
+      ctx.strokeStyle = theme.bg;
+      ctx.lineWidth = w * 1.6;
+      ctx.stroke();
+    }
+
+    if (phase === 'backdrop-2') {
+      ctx.strokeStyle = theme.bg;
+      ctx.lineWidth = w * 1.5;
+      ctx.globalAlpha = 0.5;
+      ctx.stroke();
+    }
+
+    if (phase === 'foreground') {
+      ctx.strokeStyle = theme.bg;
+      ctx.lineWidth = w * 1.4;
+      ctx.globalAlpha = 0.3;
+      ctx.stroke();
+
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle = theme.bg;
+      ctx.fill();
+
+      ctx.strokeStyle = theme.text;
+      ctx.lineWidth = w;
+      ctx.stroke();
+    }
+    // }
+
+    // {
+    //   // Circle to indicate "locked"
+
+    //   if (phase === 'backdrop-1') {
+    //     ctx.beginPath();
+    //     ctx.arc(0, 0, lineWidth * 1.4 * markerScale, 0, math.TAU);
+    //     ctx.globalAlpha = 1;
+    //     ctx.fillStyle = theme.bg;
+    //     ctx.fill();
+    //   }
+
+    //   if (phase === 'backdrop-2') {
+    //     ctx.beginPath();
+    //     ctx.arc(0, 0, lineWidth * 1.3 * markerScale, 0, math.TAU);
+    //     ctx.globalAlpha = 0.5;
+    //     ctx.fillStyle = theme.bg;
+    //     ctx.fill();
+    //   }
+
+    //   if (phase === 'foreground') {
+    //     ctx.beginPath();
+    //     ctx.arc(0, 0, lineWidth * 1.2 * markerScale, 0, math.TAU);
+    //     ctx.globalAlpha = 0.3;
+    //     ctx.fillStyle = theme.bg;
+    //     ctx.fill();
+
+    //     ctx.beginPath();
+    //     ctx.arc(0, 0, lineWidth * 1 * markerScale, 0, math.TAU);
+    //     ctx.globalAlpha = 1;
+    //     ctx.fillStyle = theme.text;
+    //     ctx.fill();
+
+    //     // ctx.beginPath();
+    //     // ctx.arc(0, 0, lineWidth * 0.6 * markerScale, 0, math.TAU);
+    //     // ctx.fillStyle = theme.bg;
+    //     // ctx.globalAlpha = 1;
+    //     // ctx.fill();
+    //   }
+    // }
   } finally {
     ctx.restore();
   }
@@ -406,6 +529,7 @@ const unmix = (a: number, b: number, v: number): number => (v - a) / (b - a);
 type ClockTheme = {
   scheme: 'light' | 'dark';
   stroke: string;
+  fill: string;
   bg: string;
   text: string;
 };
@@ -421,6 +545,7 @@ const useCanvasTheme = (canvas: HTMLCanvasElement | null, colorScheme: 'light' |
       setTheme({
         scheme: colorScheme,
         stroke: style.stroke,
+        fill: style.fill,
         bg: style.backgroundColor,
         text: style.color,
       });
