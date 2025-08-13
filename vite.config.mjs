@@ -30,11 +30,11 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              }
-            }
-          }
-        ]
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+        ],
       },
       includeAssets: ['apple-touch-icon.png', 'icon-*.svg', 'social-preview.png'],
       manifest: {
@@ -49,36 +49,36 @@ export default defineConfig({
             src: 'icon-192.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
-            purpose: 'maskable'
+            purpose: 'maskable',
           },
           {
             src: 'icon-32.svg',
             sizes: '32x32',
             type: 'image/svg+xml',
-            purpose: 'maskable'
+            purpose: 'maskable',
           },
           {
             src: 'icon-any-192.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
-            purpose: 'any'
+            purpose: 'any',
           },
           {
             src: 'icon-any-32.svg',
             sizes: '32x32',
             type: 'image/svg+xml',
-            purpose: 'any'
-          }
-        ]
-      }
+            purpose: 'any',
+          },
+        ],
+      },
     }),
     // Plugin to replace __APP_VERSION__ in HTML
     {
       name: 'html-transform',
       transformIndexHtml(html) {
         return html.replace('__APP_VERSION__', getGitCommitHash());
-      }
-    }
+      },
+    },
   ],
   base: process.env.NODE_ENV === 'production' ? '/coil-timer/' : '/',
   server: {
@@ -87,5 +87,5 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(getGitCommitHash()),
-  }
+  },
 });

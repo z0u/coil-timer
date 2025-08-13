@@ -24,16 +24,13 @@ export default function PWANotifications() {
             >
               Update
             </button>
-            <button
-              onClick={dismissUpdate}
-              className="p-1 hover:bg-blue-700 rounded transition-colors"
-            >
+            <button onClick={dismissUpdate} className="p-1 hover:bg-blue-700 rounded transition-colors">
               <X size={16} />
             </button>
           </div>
         </div>
       )}
-      
+
       {offlineReady && !updateAvailable && (
         <div className="bg-green-600 text-white rounded-lg shadow-lg p-4 max-w-sm w-full flex items-center gap-3">
           <div className="w-2 h-2 bg-green-300 rounded-full"></div>
@@ -41,10 +38,7 @@ export default function PWANotifications() {
             <p className="font-semibold text-sm">Ready for Offline Use</p>
             <p className="text-xs opacity-90">Coil is now available offline.</p>
           </div>
-          <button
-            onClick={dismissOfflineReady}
-            className="p-1 hover:bg-green-700 rounded transition-colors"
-          >
+          <button onClick={dismissOfflineReady} className="p-1 hover:bg-green-700 rounded transition-colors">
             <X size={16} />
           </button>
         </div>

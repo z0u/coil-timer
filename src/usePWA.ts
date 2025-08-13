@@ -3,7 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export function usePWA() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  
+
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -11,12 +11,15 @@ export function usePWA() {
   } = useRegisterSW({
     onRegistered(r) {
       console.log('SW Registered: ' + r);
-      
+
       // Check for updates every 10 minutes
       if (r) {
-        setInterval(() => {
-          r.update();
-        }, 10 * 60 * 1000);
+        setInterval(
+          () => {
+            r.update();
+          },
+          10 * 60 * 1000,
+        );
       }
     },
     onRegisterError(error) {
