@@ -18,6 +18,7 @@ import { AnimatedColon } from './AnimatedColon';
 import { ClockFace, ClockFaceHandle } from './ClockFace';
 import { HelpScreen } from './HelpScreen';
 import { JogDial, JogEvent } from './JogDial';
+import PWANotifications from './PWANotifications';
 import {
   formatDuration,
   formatDurationMinutes,
@@ -622,6 +623,8 @@ const SpiralTimer = () => {
           </ToolbarButton>
         )}
       </Toolbar>
+
+      <PWANotifications />
     </div>
   );
 };
